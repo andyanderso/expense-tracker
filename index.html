@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#22303A">
+<title>Expense Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Expenses">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#22303A;
+  --ink-soft:#4E5D68;
+  --paper:#EFF1EE;
+  --card:#FFFFFF;
+  --canary:#F2C744;
+  --canary-deep:#C79A18;
+  --pine:#3E6B4F;
+  --rust:#B4552D;
+  --line:#D7DAD4;
+  --radius:10px;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+  --sans:'Inter',system-ui,sans-serif;
+  --disp:'Barlow Condensed','Inter',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45;padding-bottom:90px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
+
+/* ---------- header ---------- */
+header{background:var(--ink);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+header h1{font-family:var(--disp);font-weight:700;font-size:24px;letter-spacing:.04em;text-transform:uppercase}
+header h1 span{color:var(--canary)}
+.header-total{font-family:var(--mono);font-size:13px;color:#C8D2D9;text-align:right}
+.header-total b{display:block;font-size:17px;color:var(--canary);font-weight:600}
+
+/* ---------- tabs ---------- */
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--ink);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:none;color:#93A3AD;font-family:var(--disp);font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:14px 0 12px;border-top:3px solid transparent}
+nav button.active{color:var(--canary);border-top-color:var(--canary)}
+nav button:focus-visible{outline:2px solid var(--canary);outline-offset:-2px}
+
+main{max-width:640px;margin:0 auto;padding:16px}
+.tab{display:none}
+.tab.active{display:block}
+
+/* ---------- form ---------- */
+.field{margin-bottom:14px}
+.field label{display:block;font-family:var(--disp);font-size:14px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px 12px;border:1.5px solid var(--line);border-radius:var(--radius);background:var(--card)}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--canary);border-color:var(--canary-deep)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+textarea{resize:vertical;min-height:60px}
+
+.photo-btn{width:100%;border:2px dashed var(--ink-soft);border-radius:var(--radius);background:var(--card);padding:26px 12px;text-align:center;color:var(--ink-soft);font-family:var(--disp);font-size:18px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:14px}
+.photo-btn:focus-visible{outline:2px solid var(--canary)}
+.photo-btn .cam{font-size:30px;display:block;margin-bottom:4px}
+.photo-preview{position:relative;margin-bottom:14px}
+.photo-preview img{width:100%;border-radius:var(--radius);border:1.5px solid var(--line);display:block}
+.photo-preview button{position:absolute;top:8px;right:8px;background:var(--ink);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:13px}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-size:14px;color:var(--ink-soft)}
+.chip.sel{background:var(--canary);border-color:var(--canary-deep);color:var(--ink);font-weight:600}
+.chip:focus-visible{outline:2px solid var(--ink)}
+
+.btn{display:block;width:100%;border:none;border-radius:var(--radius);padding:14px;font-family:var(--disp);font-size:19px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.btn-primary{background:var(--canary);color:var(--ink)}
+.btn-primary:active{background:var(--canary-deep)}
+.btn-dark{background:var(--ink);color:var(--canary)}
+.btn-ghost{background:none;border:1.5px solid var(--line);color:var(--ink-soft);font-size:16px;padding:10px}
+.btn+.btn{margin-top:10px}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* ---------- receipt cards (carbon-slip signature) ---------- */
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.filters select,.filters input{padding:8px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--card);font-size:14px;width:100%}
+.filters .full{grid-column:1/-1}
+.count-line{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);margin:10px 2px}
+.count-line b{color:var(--ink)}
+
+.group-head{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin:18px 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.group-head .sum{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0}
+
+.slip{background:var(--card);border:1.5px solid var(--line);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;padding:12px 14px 14px;display:flex;gap:12px;align-items:center;width:100%;text-align:left}
+.slip-wrap{margin-bottom:14px;filter:drop-shadow(0 1px 2px rgba(34,48,58,.10))}
+.slip-tear{height:8px;background:var(--card);-webkit-clip-path:polygon(0 0,100% 0,100% 20%,97.5% 100%,95% 20%,92.5% 100%,90% 20%,87.5% 100%,85% 20%,82.5% 100%,80% 20%,77.5% 100%,75% 20%,72.5% 100%,70% 20%,67.5% 100%,65% 20%,62.5% 100%,60% 20%,57.5% 100%,55% 20%,52.5% 100%,50% 20%,47.5% 100%,45% 20%,42.5% 100%,40% 20%,37.5% 100%,35% 20%,32.5% 100%,30% 20%,27.5% 100%,25% 20%,22.5% 100%,20% 20%,17.5% 100%,15% 20%,12.5% 100%,10% 20%,7.5% 100%,5% 20%,2.5% 100%,0 20%);clip-path:polygon(0 0,100% 0,100% 20%,97.5% 100%,95% 20%,92.5% 100%,90% 20%,87.5% 100%,85% 20%,82.5% 100%,80% 20%,77.5% 100%,75% 20%,72.5% 100%,70% 20%,67.5% 100%,65% 20%,62.5% 100%,60% 20%,57.5% 100%,55% 20%,52.5% 100%,50% 20%,47.5% 100%,45% 20%,42.5% 100%,40% 20%,37.5% 100%,35% 20%,32.5% 100%,30% 20%,27.5% 100%,25% 20%,22.5% 100%,20% 20%,17.5% 100%,15% 20%,12.5% 100%,10% 20%,7.5% 100%,5% 20%,2.5% 100%,0 20%)}
+.slip .thumb{width:52px;height:52px;flex:none;border-radius:8px;object-fit:cover;border:1px solid var(--line);background:var(--paper)}
+.slip .thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:20px}
+.slip .meta{flex:1;min-width:0}
+.slip .vendor{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slip .sub{font-family:var(--mono);font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.slip .tag{display:inline-block;font-family:var(--disp);font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--pine);margin-top:3px}
+.rstat{display:inline-block;font-family:var(--disp);font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.rstat.done{background:#E2EFE6;color:var(--pine)}
+.rstat.pend{background:#F6E3D8;color:var(--rust)}
+.reimb-box{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.reimb-box .rstat{margin-left:0;font-size:13px;padding:3px 8px}
+.reimb-box input[type=date]{flex:1;min-width:130px;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper)}
+.reimb-box button{border:none;border-radius:8px;padding:9px 14px;font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:var(--pine);color:#fff}
+.reimb-box button.undo{background:none;border:1.5px solid var(--line);color:var(--ink-soft)}
+.slip .amt{font-family:var(--mono);font-size:16px;font-weight:600;text-align:right;flex:none}
+.empty{border:2px dashed var(--line);border-radius:var(--radius);padding:36px 20px;text-align:center;color:var(--ink-soft);margin-top:20px}
+.empty b{font-family:var(--disp);font-size:19px;letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:6px;color:var(--ink)}
+
+/* ---------- detail sheet ---------- */
+.sheet-bg{position:fixed;inset:0;background:rgba(34,48,58,.55);z-index:90;display:none}
+.sheet-bg.open{display:block}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-height:88vh;overflow-y:auto;background:var(--paper);border-radius:16px 16px 0 0;z-index:95;padding:16px 16px calc(env(safe-area-inset-bottom,0px) + 20px);transform:translateY(105%);transition:transform .22s ease;max-width:640px;margin:0 auto}
+@media (prefers-reduced-motion:reduce){.sheet{transition:none}}
+.sheet.open{transform:translateY(0)}
+.sheet .grab{width:44px;height:4px;border-radius:2px;background:var(--line);margin:0 auto 14px}
+.sheet img{width:100%;border-radius:var(--radius);border:1.5px solid var(--line);margin-bottom:14px}
+.sheet h2{font-family:var(--disp);font-size:22px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:2px}
+.sheet .big-amt{font-family:var(--mono);font-size:20px;font-weight:600;margin-bottom:10px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:4px 10px;font-size:14px;margin-bottom:16px}
+.kv dt{font-family:var(--disp);font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);font-size:13px}
+.kv dd{font-family:var(--mono);font-size:13.5px}
+
+/* ---------- report tab ---------- */
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:14px;margin-bottom:14px}
+.panel h3{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px;color:var(--ink)}
+.sum-table{width:100%;border-collapse:collapse;font-size:14px}
+.sum-table td{padding:6px 4px;border-bottom:1px solid var(--line)}
+.sum-table td:last-child{text-align:right;font-family:var(--mono)}
+.sum-table tr.total td{border-bottom:none;font-weight:600;font-family:var(--mono)}
+.hint{font-size:13px;color:var(--ink-soft);margin-top:10px}
+.hint b{color:var(--ink)}
+.settings-row{display:flex;gap:10px;margin-top:24px}
+.settings-row .btn-ghost{flex:1}
+.banner{background:#FCEFC7;border:1.5px solid var(--canary-deep);border-radius:var(--radius);padding:10px 12px;font-size:13.5px;margin-bottom:14px;display:none}
+.banner.show{display:block}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;z-index:120;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Expense <span>Tracker</span></h1>
+  <div class="header-total"><b id="headerTotal">$0.00</b><span id="headerCount">0 receipts</span></div>
+</header>
+
+<main>
+  <div class="banner" id="storageBanner">⚠ Persistent storage isn't available in this preview — receipts will vanish when you close the page. Deploy the file to GitHub Pages or open it directly in your phone's browser for permanent storage.</div>
+
+  <!-- ============ ADD TAB ============ -->
+  <section class="tab active" id="tab-add">
+    <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
+    <input type="file" id="photoInputGallery" accept="image/*,application/pdf" hidden>
+    <button class="photo-btn" id="photoBtn"><span class="cam">📷</span>Snap receipt photo</button>
+    <div class="photo-preview" id="photoPreview" style="display:none">
+      <img id="previewImg" alt="Receipt photo preview">
+      <button id="retakeBtn">Retake</button>
+    </div>
+    <button class="btn-ghost btn" id="galleryBtn" style="margin-bottom:14px">…or choose a photo / PDF</button>
+    <button class="btn btn-dark" id="aiBtn" style="display:none;margin-bottom:14px">✨ Auto-fill from receipt</button>
+
+    <div class="row2">
+      <div class="field"><label for="fDate">Date</label><input type="date" id="fDate"></div>
+      <div class="field"><label for="fAmount">Amount</label><input type="number" id="fAmount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="fVendor">Vendor</label><input type="text" id="fVendor" placeholder="Where you paid" list="dlVendor"><datalist id="dlVendor"></datalist></div>
+      <div class="field"><label for="fCurrency">Currency</label>
+        <select id="fCurrency"><option>USD</option><option>CAD</option><option>EUR</option><option>CLP</option><option>ARS</option><option>NZD</option><option>INR</option><option>Other</option></select>
+      </div>
+    </div>
+    <div class="field"><label for="fTrip">Trip</label><input type="text" id="fTrip" placeholder="e.g. Tantalus Heli Trip" list="dlTrip"><datalist id="dlTrip"></datalist></div>
+    <div class="field"><label for="fEmployer">Employer / client</label><input type="text" id="fEmployer" placeholder="Who reimburses this" list="dlEmployer"><datalist id="dlEmployer"></datalist></div>
+    <div class="field"><label id="typeLabel">Expense type</label>
+      <div class="chips" id="typeChips" role="group" aria-labelledby="typeLabel"></div>
+    </div>
+    <div class="field"><label for="fNotes">Notes</label><textarea id="fNotes" placeholder="Optional"></textarea></div>
+    <button class="btn btn-primary" id="saveBtn">Save receipt</button>
+  </section>
+
+  <!-- ============ RECEIPTS TAB ============ -->
+  <section class="tab" id="tab-list">
+    <div class="filters">
+      <select id="filtTrip"><option value="">All trips</option></select>
+      <select id="filtEmployer"><option value="">All employers</option></select>
+      <select id="filtType"><option value="">All types</option></select>
+      <select id="filtStatus">
+        <option value="">All statuses</option>
+        <option value="no">Not reimbursed</option>
+        <option value="yes">Reimbursed</option>
+      </select>
+      <input type="date" id="filtFrom" aria-label="From date">
+      <input type="date" id="filtTo" aria-label="To date">
+      <select id="filtGroup" class="full">
+        <option value="trip">Group: trip</option>
+        <option value="employer">Group: employer</option>
+        <option value="month">Group: month</option>
+        <option value="type">Group: type</option>
+        <option value="none">Group: none</option>
+      </select>
+    </div>
+    <div class="count-line" id="countLine"></div>
+    <div id="receiptList"></div>
+  </section>
+
+  <!-- ============ HISTORY TAB ============ -->
+  <section class="tab" id="tab-history">
+    <div id="historyView"></div>
+  </section>
+
+  <!-- ============ REPORT TAB ============ -->
+  <section class="tab" id="tab-report">
+    <div class="panel">
+      <h3>Build report</h3>
+      <div class="field"><label for="rTitle">Report title</label><input type="text" id="rTitle" placeholder="e.g. Tantalus Trip — SAC Reimbursement"></div>
+      <div class="field"><label for="rName">Submitted by</label><input type="text" id="rName" placeholder="Your name"></div>
+      <div class="filters" style="margin-bottom:0">
+        <select id="rTrip"><option value="">All trips</option></select>
+        <select id="rEmployer"><option value="">All employers</option></select>
+        <input type="date" id="rFrom" aria-label="From date">
+        <input type="date" id="rTo" aria-label="To date">
+        <select id="rStatus" class="full">
+          <option value="no">Not yet reimbursed only</option>
+          <option value="">All receipts</option>
+          <option value="yes">Already reimbursed only</option>
+        </select>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Summary</h3>
+      <table class="sum-table" id="rSummary"></table>
+    </div>
+    <button class="btn btn-primary" id="docBtn">Download Word doc (.doc)</button>
+    <button class="btn btn-dark" id="printBtn">Print / save as PDF</button>
+    <button class="btn btn-ghost" id="bulkReimbBtn" style="color:var(--pine);border-color:var(--pine)">✓ Mark these receipts reimbursed today</button>
+    <p class="hint"><b>To get it into Google Drive as a Google Doc:</b> upload the .doc file to Drive (or share it straight to the Drive app on your phone), then open it — Drive converts it to a Google Doc with the summary table and every receipt photo included. From there you can share or submit it.</p>
+    <div class="panel" style="margin-top:24px">
+      <h3>Sync &amp; AI settings</h3>
+      <div class="field"><label for="sGClient">Google OAuth client ID <span style="text-transform:none;letter-spacing:0">(for Drive sync)</span></label><input type="text" id="sGClient" placeholder="1234…apps.googleusercontent.com" autocomplete="off"></div>
+      <div class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="sAutoSync" checked style="width:20px;height:20px;flex:none"><label for="sAutoSync" style="margin:0">Auto-sync with Drive when the app opens</label></div>
+      <div class="field"><label for="sAKey">Anthropic API key <span style="text-transform:none;letter-spacing:0">(for auto-fill on your own hosting)</span></label><input type="password" id="sAKey" placeholder="sk-ant-…" autocomplete="off"></div>
+      <button class="btn-ghost btn" id="saveSettingsBtn">Save settings</button>
+      <p class="hint">Both keys are stored only on this device. Drive sync keeps one <b>expense-tracker-sync.json</b> file in your Google Drive and merges it with local data — run it on each device to stay in sync.</p>
+    </div>
+    <button class="btn btn-dark" id="syncBtn">⇅ Sync with Google Drive</button>
+    <div class="settings-row">
+      <button class="btn-ghost btn" id="backupBtn">Backup data</button>
+      <button class="btn-ghost btn" id="restoreBtn">Restore</button>
+      <input type="file" id="restoreInput" accept="application/json" hidden>
+    </div>
+  </section>
+</main>
+
+<nav>
+  <button data-tab="tab-add" class="active">＋ Add</button>
+  <button data-tab="tab-list">Receipts</button>
+  <button data-tab="tab-history">History</button>
+  <button data-tab="tab-report">Report</button>
+</nav>
+
+<div class="sheet-bg" id="sheetBg"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true">
+  <div class="grab"></div>
+  <div id="sheetBody"></div>
+  <div class="reimb-box" id="reimbBox">
+    <span class="rstat" id="reimbStatus"></span>
+    <input type="date" id="reimbDate" aria-label="Reimbursement date">
+    <button id="reimbBtn">Mark reimbursed</button>
+  </div>
+  <button class="btn btn-dark" id="editBtn">Edit</button>
+  <button class="btn btn-ghost" id="deleteBtn" style="color:var(--rust);border-color:var(--rust)">Delete receipt</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ============ constants & state ============ */
+const TYPES = ['Lodging','Meals','Transportation','Fuel','Airfare','Gear','Fees','Other'];
+let receipts = [];          // in-memory mirror (includes tombstones)
+let db = null;              // IndexedDB handle (null => memory-only)
+let currentPhoto = null;    // dataURL for the add form
+let editingId = null;       // if set, save updates instead of creating
+let openReceiptId = null;
+let settings = { gclient:'', akey:'' };
+const live = () => receipts.filter(r => !r.deleted);
+
+const loadedScripts = {};
+function loadScript(src){
+  if(loadedScripts[src]) return loadedScripts[src];
+  loadedScripts[src] = new Promise((res,rej)=>{
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = () => rej(new Error('Failed to load '+src));
+    document.head.appendChild(s);
+  });
+  return loadedScripts[src];
+}
+
+const $ = id => document.getElementById(id);
+const fmt = (n,c) => (c==='USD'?'$':c==='CAD'?'CA$':c==='EUR'?'€':c+' ') + Number(n||0).toFixed(2);
+const todayISO = () => new Date().toISOString().slice(0,10);
+const esc = s => String(s??'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+
+/* ============ storage ============ */
+function initDB(){
+  return new Promise(resolve=>{
+    if(!('indexedDB' in window)) return resolve(false);
+    let req;
+    try{ req = indexedDB.open('expense-tracker',2); }catch(e){ return resolve(false); }
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if(!d.objectStoreNames.contains('receipts')) d.createObjectStore('receipts',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta',{keyPath:'k'});
+    };
+    req.onsuccess = e => { db = e.target.result; resolve(true); };
+    req.onerror = () => resolve(false);
+    req.onblocked = () => resolve(false);
+  });
+}
+function loadAll(){
+  return new Promise(resolve=>{
+    if(!db) return resolve([]);
+    const tx = db.transaction('receipts','readonly').objectStore('receipts').getAll();
+    tx.onsuccess = () => resolve(tx.result||[]);
+    tx.onerror = () => resolve([]);
+  });
+}
+function putReceipt(r){
+  if(!db) return Promise.resolve();
+  return new Promise(res=>{
+    const tx = db.transaction('receipts','readwrite');
+    tx.objectStore('receipts').put(r);
+    tx.oncomplete = res; tx.onerror = res;
+  });
+}
+function metaGet(k){
+  return new Promise(res=>{
+    if(!db) return res(null);
+    const tx = db.transaction('meta','readonly').objectStore('meta').get(k);
+    tx.onsuccess = () => res(tx.result ? tx.result.v : null);
+    tx.onerror = () => res(null);
+  });
+}
+function metaSet(k,v){
+  if(!db) return Promise.resolve();
+  return new Promise(res=>{
+    const tx = db.transaction('meta','readwrite');
+    tx.objectStore('meta').put({k:k,v:v});
+    tx.oncomplete = res; tx.onerror = res;
+  });
+}
+
+/* ============ image handling ============ */
+function downscale(file){
+  return new Promise((resolve,reject)=>{
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 1600;
+      let {width:w,height:h} = img;
+      if(Math.max(w,h) > MAX){ const s = MAX/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+      const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      resolve(cv.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+    img.src = url;
+  });
+}
+
+async function pdfToImage(file){
+  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  await loadScript(PDFJS);
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const buf = await file.arrayBuffer();
+  const doc = await window.pdfjsLib.getDocument({data:buf}).promise;
+  const pages = Math.min(doc.numPages, 3);
+  const canvases = [];
+  let totalH = 0, width = 0;
+  for(let p=1; p<=pages; p++){
+    const page = await doc.getPage(p);
+    let vp = page.getViewport({scale:1});
+    const scale = Math.min(2, 1400/vp.width);
+    vp = page.getViewport({scale:scale});
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    await page.render({canvasContext:cv.getContext('2d'), viewport:vp}).promise;
+    canvases.push(cv); totalH += cv.height; width = Math.max(width, cv.width);
+  }
+  const out = document.createElement('canvas');
+  out.width = width; out.height = totalH;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,width,totalH);
+  let y = 0;
+  canvases.forEach(cv=>{ ctx.drawImage(cv,0,y); y += cv.height; });
+  return out.toDataURL('image/jpeg',0.82);
+}
+
+/* ============ toast ============ */
+let toastTimer;
+function toast(msg){
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ============ tabs ============ */
+document.querySelectorAll('nav button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    $(b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='tab-list') renderList();
+    if(b.dataset.tab==='tab-history') renderHistory();
+    if(b.dataset.tab==='tab-report') renderReportSummary();
+    window.scrollTo(0,0);
+  });
+});
+
+/* ============ add form ============ */
+function buildChips(selected){
+  const wrap = $('typeChips'); wrap.innerHTML='';
+  TYPES.forEach(t=>{
+    const c = document.createElement('button');
+    c.type='button'; c.className='chip'+(t===selected?' sel':''); c.textContent=t;
+    c.addEventListener('click',()=>{ wrap.querySelectorAll('.chip').forEach(x=>x.classList.remove('sel')); c.classList.add('sel'); });
+    wrap.appendChild(c);
+  });
+}
+function selectedType(){ const s = document.querySelector('#typeChips .chip.sel'); return s ? s.textContent : 'Other'; }
+
+$('photoBtn').addEventListener('click',()=>$('photoInput').click());
+$('galleryBtn').addEventListener('click',()=>$('photoInputGallery').click());
+async function handleFile(e){
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    if(f.type==='application/pdf'){
+      toast('Converting PDF…');
+      currentPhoto = await pdfToImage(f);
+    } else {
+      currentPhoto = await downscale(f);
+    }
+    $('previewImg').src = currentPhoto;
+    $('photoPreview').style.display='block';
+    $('photoBtn').style.display='none';
+    $('galleryBtn').style.display='none';
+    $('aiBtn').style.display='block';
+  }catch(err){
+    toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image");
+  }
+  e.target.value='';
+}
+$('photoInput').addEventListener('change',handleFile);
+$('photoInputGallery').addEventListener('change',handleFile);
+$('retakeBtn').addEventListener('click',()=>{
+  currentPhoto=null;
+  $('photoPreview').style.display='none';
+  $('photoBtn').style.display='block';
+  $('galleryBtn').style.display='block';
+  $('aiBtn').style.display='none';
+});
+
+/* ============ AI auto-fill ============ */
+$('aiBtn').addEventListener('click', async ()=>{
+  if(!currentPhoto) return;
+  const btn = $('aiBtn');
+  btn.disabled = true; btn.textContent = 'Reading receipt…';
+  try{
+    const headers = {'content-type':'application/json'};
+    if(settings.akey){
+      headers['x-api-key'] = settings.akey;
+      headers['anthropic-version'] = '2023-06-01';
+      headers['anthropic-dangerous-direct-browser-access'] = 'true';
+    }
+    const resp = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:headers,
+      body: JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1000,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:currentPhoto.split(',')[1]}},
+          {type:'text',text:'This image is a receipt or invoice. Extract its details and respond with ONLY a raw JSON object, no markdown fences, no commentary: {"vendor": string, "date": "YYYY-MM-DD", "amount": number (the grand total paid), "currency": 3-letter code like "USD", "type": one of '+JSON.stringify(TYPES)+', "notes": very short string or ""}. Use null for anything unreadable.'}
+        ]}]
+      })
+    });
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    const text = (data.content||[]).map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
+    const x = JSON.parse(text);
+    if(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date)) $('fDate').value = x.date;
+    if(x.amount != null && !isNaN(x.amount)) $('fAmount').value = Number(x.amount).toFixed(2);
+    if(x.vendor) $('fVendor').value = x.vendor;
+    if(x.currency){
+      const opts = [...$('fCurrency').options].map(o=>o.value);
+      $('fCurrency').value = opts.includes(x.currency) ? x.currency : 'Other';
+    }
+    if(x.type && TYPES.includes(x.type)) buildChips(x.type);
+    if(x.notes && !$('fNotes').value) $('fNotes').value = x.notes;
+    toast('Fields filled — double-check the amount');
+  }catch(err){
+    toast(settings.akey
+      ? 'Auto-fill failed — check your API key and connection'
+      : 'Auto-fill needs an Anthropic API key on this hosting — add one under Report → Sync & AI settings');
+  }
+  btn.disabled = false; btn.textContent = '✨ Auto-fill from receipt';
+});
+
+function resetForm(){
+  editingId=null; currentPhoto=null;
+  $('photoPreview').style.display='none';
+  $('photoBtn').style.display='block';
+  $('galleryBtn').style.display='block';
+  $('aiBtn').style.display='none';
+  $('fDate').value=todayISO();
+  ['fAmount','fVendor','fTrip','fEmployer','fNotes'].forEach(id=>$(id).value='');
+  $('fCurrency').value='USD';
+  buildChips(null);
+  $('saveBtn').textContent='Save receipt';
+}
+
+$('saveBtn').addEventListener('click',async ()=>{
+  const amount = parseFloat($('fAmount').value);
+  if(!$('fDate').value){ toast('Add a date'); return; }
+  if(isNaN(amount)){ toast('Add an amount'); return; }
+  const r = {
+    id: editingId || (Date.now().toString(36)+Math.random().toString(36).slice(2,7)),
+    date: $('fDate').value,
+    amount: amount,
+    currency: $('fCurrency').value,
+    vendor: $('fVendor').value.trim(),
+    trip: $('fTrip').value.trim(),
+    employer: $('fEmployer').value.trim(),
+    type: selectedType(),
+    notes: $('fNotes').value.trim(),
+    image: currentPhoto,
+    reimbursed: false,
+    reimbursedDate: null,
+    deleted: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  if(editingId){
+    const i = receipts.findIndex(x=>x.id===editingId);
+    if(i>-1){
+      r.createdAt = receipts[i].createdAt;
+      r.reimbursed = !!receipts[i].reimbursed;
+      r.reimbursedDate = receipts[i].reimbursedDate || null;
+      receipts[i]=r;
+    }
+  } else {
+    receipts.push(r);
+  }
+  await putReceipt(r);
+  resetForm(); refreshDatalists(); refreshFilters(); updateHeader();
+  toast('Receipt saved');
+});
+
+/* ============ datalists & filters ============ */
+function distinct(field){
+  return [...new Set(live().map(r=>r[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+}
+function fillList(el, values){
+  el.innerHTML=''; values.forEach(v=>{ const o=document.createElement('option'); o.value=v; el.appendChild(o); });
+}
+function fillSelect(sel, values, allLabel){
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">'+allLabel+'</option>';
+  values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+  if(values.includes(cur)) sel.value=cur;
+}
+function refreshDatalists(){
+  fillList($('dlVendor'),distinct('vendor'));
+  fillList($('dlTrip'),distinct('trip'));
+  fillList($('dlEmployer'),distinct('employer'));
+}
+function refreshFilters(){
+  fillSelect($('filtTrip'),distinct('trip'),'All trips');
+  fillSelect($('filtEmployer'),distinct('employer'),'All employers');
+  fillSelect($('filtType'),distinct('type'),'All types');
+  fillSelect($('rTrip'),distinct('trip'),'All trips');
+  fillSelect($('rEmployer'),distinct('employer'),'All employers');
+}
+
+function applyFilters(list, trip, employer, type, from, to, status){
+  return list.filter(r =>
+    (!trip || r.trip===trip) &&
+    (!employer || r.employer===employer) &&
+    (!type || r.type===type) &&
+    (!from || r.date>=from) &&
+    (!to || r.date<=to) &&
+    (!status || (status==='yes' ? !!r.reimbursed : !r.reimbursed))
+  ).sort((a,b)=> a.date===b.date ? a.createdAt-b.createdAt : (a.date<b.date?-1:1));
+}
+
+/* ============ totals ============ */
+function totalsByCurrency(list){
+  const t={}; list.forEach(r=>{ t[r.currency]=(t[r.currency]||0)+r.amount; });
+  return t;
+}
+function totalsString(list){
+  const t = totalsByCurrency(list);
+  const parts = Object.keys(t).sort().map(c=>fmt(t[c],c));
+  return parts.length?parts.join(' + '):'$0.00';
+}
+function updateHeader(){
+  const all = live();
+  const pending = all.filter(r=>!r.reimbursed);
+  $('headerTotal').textContent = totalsString(pending);
+  $('headerCount').textContent = pending.length + ' of ' + all.length + ' awaiting reimb.';
+}
+
+/* ============ list rendering ============ */
+['filtTrip','filtEmployer','filtType','filtStatus','filtGroup','filtFrom','filtTo'].forEach(id=>$(id).addEventListener('change',renderList));
+
+function monthLabel(iso){
+  const d = new Date(iso+'T12:00:00');
+  return d.toLocaleString(undefined,{month:'long',year:'numeric'});
+}
+function slipHTML(r){
+  const thumb = r.image
+    ? '<img class="thumb" src="'+r.image+'" alt="">'
+    : '<span class="thumb ph" aria-hidden="true">🧾</span>';
+  return '<div class="slip-wrap">'
+    + '<button class="slip" data-id="'+r.id+'">'
+    + thumb
+    + '<span class="meta"><span class="vendor">'+esc(r.vendor||'(no vendor)')+'</span>'
+    + '<span class="sub">'+esc(r.date)+(r.trip?' · '+esc(r.trip):'')+(r.employer?' · '+esc(r.employer):'')+'</span>'
+    + '<span class="tag">'+esc(r.type)+'</span>'
+    + (r.reimbursed
+        ? '<span class="rstat done">✓ '+esc(r.reimbursedDate||'reimbursed')+'</span>'
+        : '<span class="rstat pend">Pending</span>')
+    + '</span>'
+    + '<span class="amt">'+fmt(r.amount,r.currency)+'</span>'
+    + '</button><div class="slip-tear"></div></div>';
+}
+function renderList(){
+  const list = applyFilters(live(), $('filtTrip').value, $('filtEmployer').value, $('filtType').value, $('filtFrom').value, $('filtTo').value, $('filtStatus').value);
+  const groupBy = $('filtGroup').value;
+  const host = $('receiptList');
+  $('countLine').innerHTML = '<b>'+list.length+'</b> receipt'+(list.length===1?'':'s')+' · <b>'+totalsString(list)+'</b>';
+  if(!list.length){
+    host.innerHTML = '<div class="empty"><b>No receipts here yet</b>Snap your first one on the Add tab — it takes about fifteen seconds.</div>';
+    return;
+  }
+  let html='';
+  if(groupBy==='none'){
+    html = list.map(slipHTML).join('');
+  } else {
+    const groups = {};
+    list.forEach(r=>{
+      const key = groupBy==='month' ? monthLabel(r.date) : (r[groupBy] || '(none)');
+      (groups[key]=groups[key]||[]).push(r);
+    });
+    Object.keys(groups).sort().forEach(k=>{
+      html += '<div class="group-head"><span>'+esc(k)+'</span><span class="sum">'+totalsString(groups[k])+'</span></div>';
+      html += groups[k].map(slipHTML).join('');
+    });
+  }
+  host.innerHTML = html;
+  host.querySelectorAll('.slip').forEach(el=>el.addEventListener('click',()=>openSheet(el.dataset.id)));
+}
+
+/* ============ reimbursement history ============ */
+function renderHistory(){
+  const host = $('historyView');
+  const all = live();
+  const done = all.filter(r=>r.reimbursed);
+  const pend = all.filter(r=>!r.reimbursed);
+  if(!all.length){
+    host.innerHTML = '<div class="empty"><b>No history yet</b>Once you save receipts and mark them reimbursed, this tab shows what came in and when.</div>';
+    return;
+  }
+  let html = '<div class="panel"><h3>Lifetime</h3><table class="sum-table">'
+    + '<tr><td>Reimbursed ('+done.length+')</td><td>'+totalsString(done)+'</td></tr>'
+    + '<tr class="total"><td style="color:var(--rust)">Awaiting ('+pend.length+')</td><td style="color:var(--rust)">'+totalsString(pend)+'</td></tr>'
+    + '</table></div>';
+  if(pend.length){
+    html += '<div class="group-head"><span>Awaiting reimbursement</span><span class="sum">'+totalsString(pend)+'</span></div>';
+    html += pend.slice().sort((a,b)=>a.date<b.date?1:-1).map(slipHTML).join('');
+  }
+  // group reimbursed receipts by month of reimbursedDate, newest first
+  const groups = {};
+  done.forEach(r=>{
+    const key = (r.reimbursedDate||'').slice(0,7) || '0000-00';
+    (groups[key]=groups[key]||[]).push(r);
+  });
+  Object.keys(groups).sort().reverse().forEach(k=>{
+    const label = k==='0000-00' ? 'Date unknown' : monthLabel(k+'-15');
+    const g = groups[k].slice().sort((a,b)=>(a.reimbursedDate||'')<(b.reimbursedDate||'')?1:-1);
+    html += '<div class="group-head"><span>Reimbursed · '+esc(label)+'</span><span class="sum">'+totalsString(g)+'</span></div>';
+    html += g.map(slipHTML).join('');
+  });
+  host.innerHTML = html;
+  host.querySelectorAll('.slip').forEach(el=>el.addEventListener('click',()=>openSheet(el.dataset.id)));
+}
+
+/* ============ detail sheet ============ */
+function openSheet(id){
+  const r = receipts.find(x=>x.id===id); if(!r) return;
+  openReceiptId = id;
+  $('sheetBody').innerHTML =
+    (r.image?'<img src="'+r.image+'" alt="Receipt photo">':'')
+    + '<h2>'+esc(r.vendor||'(no vendor)')+'</h2>'
+    + '<div class="big-amt">'+fmt(r.amount,r.currency)+'</div>'
+    + '<dl class="kv">'
+    + '<dt>Date</dt><dd>'+esc(r.date)+'</dd>'
+    + '<dt>Type</dt><dd>'+esc(r.type)+'</dd>'
+    + (r.trip?'<dt>Trip</dt><dd>'+esc(r.trip)+'</dd>':'')
+    + (r.employer?'<dt>Employer</dt><dd>'+esc(r.employer)+'</dd>':'')
+    + (r.notes?'<dt>Notes</dt><dd>'+esc(r.notes)+'</dd>':'')
+    + '</dl>';
+  const st = $('reimbStatus'), dt = $('reimbDate'), btn = $('reimbBtn');
+  if(r.reimbursed){
+    st.className='rstat done'; st.textContent='✓ Reimbursed '+(r.reimbursedDate||'');
+    dt.style.display='none';
+    btn.textContent='Undo'; btn.className='undo';
+  } else {
+    st.className='rstat pend'; st.textContent='Pending';
+    dt.style.display='block'; dt.value=todayISO();
+    btn.textContent='Mark reimbursed'; btn.className='';
+  }
+  $('sheetBg').classList.add('open');
+  $('sheet').classList.add('open');
+}
+
+$('reimbBtn').addEventListener('click',async ()=>{
+  const r = receipts.find(x=>x.id===openReceiptId); if(!r) return;
+  if(r.reimbursed){ r.reimbursed=false; r.reimbursedDate=null; }
+  else { r.reimbursed=true; r.reimbursedDate=$('reimbDate').value||todayISO(); }
+  r.updatedAt = Date.now();
+  await putReceipt(r);
+  openSheet(r.id);
+  renderList(); updateHeader(); renderReportSummary(); renderHistory();
+  toast(r.reimbursed ? 'Marked reimbursed '+r.reimbursedDate : 'Marked as pending');
+});
+function closeSheet(){ $('sheetBg').classList.remove('open'); $('sheet').classList.remove('open'); openReceiptId=null; }
+$('sheetBg').addEventListener('click',closeSheet);
+
+$('deleteBtn').addEventListener('click',async ()=>{
+  if(!openReceiptId) return;
+  if(!confirm('Delete this receipt? This can\'t be undone.')) return;
+  const r = receipts.find(x=>x.id===openReceiptId);
+  if(r){ r.deleted = true; r.image = null; r.updatedAt = Date.now(); await putReceipt(r); }
+  closeSheet(); renderList(); refreshFilters(); updateHeader(); renderHistory();
+  toast('Receipt deleted');
+});
+
+$('editBtn').addEventListener('click',()=>{
+  const r = receipts.find(x=>x.id===openReceiptId); if(!r) return;
+  closeSheet();
+  editingId = r.id;
+  currentPhoto = r.image || null;
+  if(currentPhoto){ $('previewImg').src=currentPhoto; $('photoPreview').style.display='block'; $('photoBtn').style.display='none'; $('galleryBtn').style.display='none'; $('aiBtn').style.display='block'; }
+  else { $('photoPreview').style.display='none'; $('photoBtn').style.display='block'; $('galleryBtn').style.display='block'; $('aiBtn').style.display='none'; }
+  $('fDate').value=r.date; $('fAmount').value=r.amount; $('fCurrency').value=r.currency;
+  $('fVendor').value=r.vendor; $('fTrip').value=r.trip; $('fEmployer').value=r.employer; $('fNotes').value=r.notes;
+  buildChips(r.type);
+  $('saveBtn').textContent='Update receipt';
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
+  document.querySelector('nav button[data-tab="tab-add"]').classList.add('active');
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  $('tab-add').classList.add('active');
+  window.scrollTo(0,0);
+});
+
+/* ============ report ============ */
+['rTrip','rEmployer','rFrom','rTo','rStatus'].forEach(id=>$(id).addEventListener('change',renderReportSummary));
+
+function reportSet(){
+  return applyFilters(live(), $('rTrip').value, $('rEmployer').value, '', $('rFrom').value, $('rTo').value, $('rStatus').value);
+}
+function renderReportSummary(){
+  const list = reportSet();
+  const byType = {};
+  list.forEach(r=>{ (byType[r.type]=byType[r.type]||[]).push(r); });
+  let html='';
+  Object.keys(byType).sort().forEach(t=>{
+    html += '<tr><td>'+esc(t)+' ('+byType[t].length+')</td><td>'+totalsString(byType[t])+'</td></tr>';
+  });
+  html += '<tr class="total"><td>Total — '+list.length+' receipt'+(list.length===1?'':'s')+'</td><td>'+totalsString(list)+'</td></tr>';
+  const pend = list.filter(r=>!r.reimbursed);
+  if(pend.length && pend.length<list.length){
+    html += '<tr><td style="color:var(--rust)">Still outstanding ('+pend.length+')</td><td style="color:var(--rust)">'+totalsString(pend)+'</td></tr>';
+  }
+  $('rSummary').innerHTML = html;
+}
+
+function reportHTML(forWord){
+  const list = reportSet();
+  const title = $('rTitle').value.trim() || 'Expense Report';
+  const name = $('rName').value.trim();
+  const trip = $('rTrip').value, employer = $('rEmployer').value;
+  const from = $('rFrom').value, to = $('rTo').value;
+  const byType = {};
+  list.forEach(r=>{ (byType[r.type]=byType[r.type]||[]).push(r); });
+
+  let h = '<h1 style="font-family:Arial,sans-serif;font-size:22pt;margin-bottom:4pt">'+esc(title)+'</h1>';
+  h += '<p style="font-family:Arial,sans-serif;font-size:11pt;color:#444;margin-top:0">';
+  if(name) h += 'Submitted by: '+esc(name)+'<br>';
+  if(employer) h += 'Employer / client: '+esc(employer)+'<br>';
+  if(trip) h += 'Trip: '+esc(trip)+'<br>';
+  if(from||to) h += 'Period: '+esc(from||'…')+' to '+esc(to||'…')+'<br>';
+  h += 'Generated: '+todayISO()+' · '+list.length+' receipt'+(list.length===1?'':'s')+'</p>';
+
+  h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Summary by expense type</h2>';
+  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10.5pt;width:100%"><tr style="background:#F2C744"><th align="left">Type</th><th align="left">Count</th><th align="left">Total</th></tr>';
+  Object.keys(byType).sort().forEach(t=>{
+    h += '<tr><td>'+esc(t)+'</td><td>'+byType[t].length+'</td><td>'+totalsString(byType[t])+'</td></tr>';
+  });
+  h += '<tr style="font-weight:bold;background:#eee"><td>Total</td><td>'+list.length+'</td><td>'+totalsString(list)+'</td></tr></table>';
+
+  h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Itemized expenses</h2>';
+  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%"><tr style="background:#F2C744"><th align="left">#</th><th align="left">Date</th><th align="left">Vendor</th><th align="left">Type</th><th align="left">Trip</th><th align="left">Amount</th><th align="left">Reimbursed</th><th align="left">Notes</th></tr>';
+  list.forEach((r,i)=>{
+    h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td><td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
+  });
+  h += '</table>';
+
+  h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
+  list.forEach((r,i)=>{
+    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+'</p>';
+    if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?480:'')+'" style="max-width:100%;border:1px solid #999">';
+    else h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#888">(no photo attached)</p>';
+  });
+  return h;
+}
+
+$('docBtn').addEventListener('click',()=>{
+  const list = reportSet();
+  if(!list.length){ toast('No receipts match those filters'); return; }
+  const title = ($('rTitle').value.trim()||'expense-report').replace(/[^\w\- ]+/g,'').replace(/ +/g,'-');
+  const doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Expense Report</title></head><body>'+reportHTML(true)+'</body></html>';
+  const blob = new Blob(['\ufeff'+doc],{type:'application/msword'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = title+'.doc';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('Report downloaded');
+});
+
+$('printBtn').addEventListener('click',()=>{
+  const list = reportSet();
+  if(!list.length){ toast('No receipts match those filters'); return; }
+  const w = window.open('','_blank');
+  if(!w){ toast('Allow pop-ups to print'); return; }
+  w.document.write('<html><head><title>Expense Report</title></head><body>'+reportHTML(false)+'</body></html>');
+  w.document.close();
+  w.onload = () => w.print();
+});
+
+$('bulkReimbBtn').addEventListener('click',async ()=>{
+  const pend = reportSet().filter(r=>!r.reimbursed);
+  if(!pend.length){ toast('Nothing pending in this set'); return; }
+  if(!confirm('Mark '+pend.length+' receipt'+(pend.length===1?'':'s')+' ('+totalsString(pend)+') as reimbursed today?')) return;
+  const d = todayISO();
+  for(const r of pend){ r.reimbursed=true; r.reimbursedDate=d; r.updatedAt=Date.now(); await putReceipt(r); }
+  renderReportSummary(); renderList(); updateHeader(); renderHistory();
+  toast(pend.length+' marked reimbursed '+d);
+});
+
+/* ============ backup / restore ============ */
+$('backupBtn').addEventListener('click',()=>{
+  if(!receipts.length){ toast('Nothing to back up yet'); return; }
+  const blob = new Blob([JSON.stringify({app:'expense-tracker',v:1,receipts:receipts})],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'expense-tracker-backup-'+todayISO()+'.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+});
+$('restoreBtn').addEventListener('click',()=>$('restoreInput').click());
+
+async function mergeIn(remote){
+  let changed = 0;
+  for(const rr of remote){
+    if(!rr || !rr.id) continue;
+    const i = receipts.findIndex(x=>x.id===rr.id);
+    if(i < 0){ receipts.push(rr); await putReceipt(rr); changed++; }
+    else if((rr.updatedAt||rr.createdAt||0) > (receipts[i].updatedAt||receipts[i].createdAt||0)){
+      receipts[i] = rr; await putReceipt(rr); changed++;
+    }
+  }
+  return changed;
+}
+
+$('restoreInput').addEventListener('change',e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    try{
+      const data = JSON.parse(rd.result);
+      if(!data.receipts || !Array.isArray(data.receipts)) throw new Error('bad file');
+      const n = await mergeIn(data.receipts);
+      refreshDatalists(); refreshFilters(); updateHeader(); renderList(); renderReportSummary();
+      toast('Merged '+n+' change'+(n===1?'':'s')+' from backup');
+    }catch(err){ toast("That file isn't a Expense Tracker backup"); }
+  };
+  rd.readAsText(f);
+  e.target.value='';
+});
+
+/* ============ settings ============ */
+$('saveSettingsBtn').addEventListener('click',async ()=>{
+  settings.gclient = $('sGClient').value.trim();
+  settings.akey = $('sAKey').value.trim();
+  settings.autosync = $('sAutoSync').checked;
+  await metaSet('settings', settings);
+  toast('Settings saved on this device');
+});
+
+/* ============ Google Drive sync ============ */
+const SYNC_NAME = 'expense-tracker-sync.json';
+let gToken = null, gTokenExp = 0;
+
+function getGoogleToken(silent){
+  return new Promise(async (resolve,reject)=>{
+    if(gToken && Date.now() < gTokenExp) return resolve(gToken);
+    try{ await loadScript('https://accounts.google.com/gsi/client'); }
+    catch(e){ return reject(new Error('offline')); }
+    try{
+      const tc = google.accounts.oauth2.initTokenClient({
+        client_id: settings.gclient,
+        scope: 'https://www.googleapis.com/auth/drive.file',
+        callback: t => {
+          if(t && t.access_token){
+            gToken = t.access_token;
+            gTokenExp = Date.now() + Math.max(0,(t.expires_in-60))*1000;
+            resolve(gToken);
+          } else reject(new Error('no token'));
+        },
+        error_callback: err => reject(err)
+      });
+      tc.requestAccessToken(silent ? {prompt:''} : {});
+    }catch(e){ reject(e); }
+  });
+}
+
+async function doSync(silent){
+  if(!settings.gclient){
+    if(!silent) toast('Add a Google OAuth client ID in Sync & AI settings first');
+    return;
+  }
+  const btn = $('syncBtn');
+  btn.disabled = true; btn.textContent = '⇅ Syncing…';
+  try{
+    const token = await getGoogleToken(silent);
+    const auth = {Authorization:'Bearer '+token};
+    // find existing sync file
+    const q = encodeURIComponent("name='"+SYNC_NAME+"' and trashed=false");
+    const listRes = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&spaces=drive',{headers:auth});
+    if(!listRes.ok) throw new Error('Drive list failed');
+    const files = (await listRes.json()).files || [];
+    let fileId = files.length ? files[0].id : null;
+    let pulled = 0;
+    if(fileId){
+      const dl = await fetch('https://www.googleapis.com/drive/v3/files/'+fileId+'?alt=media',{headers:auth});
+      if(dl.ok){
+        try{
+          const remote = await dl.json();
+          if(remote && Array.isArray(remote.receipts)) pulled = await mergeIn(remote.receipts);
+        }catch(e){ /* corrupt remote file — overwrite below */ }
+      }
+    }
+    // push merged state back up
+    const payload = JSON.stringify({app:'expense-tracker', v:2, syncedAt:Date.now(), receipts:receipts});
+    const boundary = 'rl'+Date.now();
+    const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+      + JSON.stringify({name:SYNC_NAME, mimeType:'application/json'})
+      + '\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'
+      + payload + '\r\n--'+boundary+'--';
+    const upUrl = fileId
+      ? 'https://www.googleapis.com/upload/drive/v3/files/'+fileId+'?uploadType=multipart'
+      : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+    const up = await fetch(upUrl,{
+      method: fileId ? 'PATCH' : 'POST',
+      headers: {...auth, 'Content-Type':'multipart/related; boundary='+boundary},
+      body: body
+    });
+    if(!up.ok) throw new Error('Drive upload failed');
+    refreshDatalists(); refreshFilters(); updateHeader(); renderList(); renderReportSummary(); renderHistory();
+    toast(pulled ? 'Synced — pulled '+pulled+' change'+(pulled===1?'':'s') : 'Synced with Drive');
+  }catch(err){
+    if(silent){
+      toast('Auto-sync needs a tap — hit ⇅ Sync on the Report tab');
+    } else {
+      toast('Sync failed: '+(err && err.message ? err.message : 'check connection and client ID'));
+    }
+  }
+  btn.disabled = false; btn.textContent = '⇅ Sync with Google Drive';
+}
+$('syncBtn').addEventListener('click', ()=>doSync(false));
+
+/* ============ boot ============ */
+(async function boot(){
+  const ok = await initDB();
+  if(ok){
+    receipts = await loadAll();
+    receipts.forEach(r=>{
+      r.reimbursed = !!r.reimbursed;
+      r.reimbursedDate = r.reimbursedDate || null;
+      r.deleted = !!r.deleted;
+      r.updatedAt = r.updatedAt || r.createdAt || Date.now();
+    });
+    const saved = await metaGet('settings');
+    if(saved){
+      settings = Object.assign(settings, saved);
+      $('sGClient').value = settings.gclient||'';
+      $('sAKey').value = settings.akey||'';
+      $('sAutoSync').checked = settings.autosync !== false;
+    }
+    if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+    if(settings.gclient && settings.autosync !== false && navigator.onLine){
+      setTimeout(()=>doSync(true), 600);
+    }
+  } else {
+    $('storageBanner').classList.add('show');
+  }
+  if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')){
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+  resetForm();
+  refreshDatalists(); refreshFilters(); updateHeader(); renderReportSummary();
+})();
+
+})();
+</script>
+</body>
+</html>
