@@ -99,16 +99,29 @@ Sync keeps one file (`expense-tracker-sync.json`) in your own Google Drive and m
 1. Go to **console.cloud.google.com** and sign in with your Google account.
 2. Create a **new project** (name it anything, e.g. "Expense Tracker").
 3. In the search bar, find **Google Drive API** and click **Enable**.
-4. Go to **APIs & Services → OAuth consent screen**:
-   - User type: **External**, then fill in the app name and your email.
-   - You don't need to submit for verification. Either add your own Google account under **Test users**, or use **Publish app** — both work for personal use. (Unverified apps show a warning screen on first sign-in; click "Advanced → Go to app" — it's your own app.)
+4. Go to **APIs & Services → OAuth consent screen** (in newer console versions this appears as **Google Auth Platform**). Choose User type **External**, give the app a name (e.g. "Expense Tracker"), and enter your email where required. Then pick ONE of these two paths:
+
+   **Path A — add yourself as a test user (fastest):**
+   - Go to the **Audience** page (or the "Test users" section of the consent screen).
+   - Under **Test users**, click **+ Add users**, type your own Gmail address, and **Save**.
+   - Done. The app stays in "Testing" status forever, which is fine — you're the only user. You may need to re-approve access occasionally.
+
+   **Path B — publish the app (set-and-forget):**
+   - On the same page, find **Publishing status** and click **Publish app**, then confirm.
+   - This app only uses the `drive.file` scope, which Google classifies as non-sensitive, so publishing requires **no verification review** — the button just works, and you won't be nagged to re-consent.
+   - Recommended if you don't want to think about it again.
+
+   Either way, the first time you sign in you may see a "Google hasn't verified this app" screen — click **Advanced → Go to [app name]**. It's your own app; the warning is just Google's default for personal OAuth apps.
+
 5. Go to **APIs & Services → Credentials → Create credentials → OAuth client ID**:
    - Application type: **Web application**
    - Under **Authorized JavaScript origins**, add your app's origin(s):
      - `https://YOUR-USERNAME.github.io`
      - `http://localhost:8000` (if you run it locally)
    - Create, then copy the **Client ID** (ends in `.apps.googleusercontent.com`). No client secret is needed.
-6. In the app: **Report tab → Sync & AI settings** → paste the Client ID → **Save settings**.
+6. Give the app the client ID — two ways:
+   - **Per device:** Report tab → Sync & AI settings → paste → Save. You'd repeat this once on each device/browser, because settings are stored locally, not synced.
+   - **Once for all devices (recommended):** open `index.html`, find the line near the top of the script that reads `const DEFAULT_GCLIENT = '';`, paste your client ID between the quotes, and push the change. Every device then has it automatically. This is safe to commit publicly — see the privacy section below.
 7. Tap **⇅ Sync with Google Drive** and approve access on each device once.
 
 **Auto-sync:** with the "Auto-sync when the app opens" box checked (it is by default), the app quietly syncs every time you open it. If the browser blocks the silent sign-in (usually only the very first time on a device), you'll get a toast asking you to tap the sync button once — after that, auto-sync runs cleanly.
@@ -119,12 +132,20 @@ The app requests only the `drive.file` permission, meaning it can see and touch 
 
 ## 5. AI auto-fill (optional)
 
-The **✨ Auto-fill** button sends the receipt image to Claude, which extracts the vendor, date, amount, currency, and expense type.
+The **✨ Auto-fill** button sends the receipt image to an AI model, which extracts the vendor, date, amount, currency, and expense type. Two supported providers — you only need one:
 
-- Get an API key at **console.anthropic.com** (Settings → API keys).
-- Paste it in **Report tab → Sync & AI settings** → Save.
-- Cost is roughly **half a cent per receipt** — a full season of expenses costs less than a coffee. This is the only non-free feature; everything else works without it.
-- The key is stored only on your device and is sent only to Anthropic's API.
+**Option A — Gemini (free, recommended):**
+1. Go to **aistudio.google.com**, sign in with your Google account, and click **Get API key** → Create API key. No credit card, no billing setup.
+2. Paste it in **Report tab → Sync & AI settings** → Save.
+3. The free tier covers Gemini Flash models with generous daily limits — far more than any realistic receipt volume. Genuinely $0.
+
+**Option B — Claude (paid, pay-as-you-go):**
+- Get an API key at **console.anthropic.com** (Settings → API keys). Costs roughly half a cent per receipt.
+- If both keys are saved, the app uses Gemini.
+
+**Note on subscriptions:** a Google AI Pro subscription or a Claude Pro subscription does **not** include API access — those cover the consumer chat apps only. API keys are separate products for both companies, which is why the free Gemini AI Studio key is the right fit here.
+
+Either key is stored only on your device and sent only to that provider's API when you tap the button. **Never commit an API key to the repo** — both Gemini and Anthropic keys are real secrets (unlike the OAuth client ID).
 
 ---
 
@@ -134,12 +155,20 @@ The **✨ Auto-fill** button sends the receipt image to Claude, which extracts t
 
 ---
 
-## 7. Data & privacy
+## 7. Data, privacy & the public repo
 
+**Your repo can (and on a free GitHub plan, must) be public.** GitHub Pages only works on public repositories unless you have a paid GitHub plan. That's fine, because nothing private ever lives in the repo:
+
+- **Your receipts and financial data are never in the repo.** They exist only in your browser's local database on each device and in the sync file in your own Google Drive. Pushing code to GitHub never touches them.
+- **The OAuth client ID is safe to commit publicly.** Google designed web client IDs to be public — they're visible in the URL bar during every sign-in anyway. Security comes from the **Authorized JavaScript origins** list: Google will only issue tokens for your client ID to pages served from the origins you listed. Someone who copies your client ID onto their own site just gets an error. (For the same reason, don't add origins you don't control.)
+- **API keys (Gemini or Anthropic) are real secrets — never commit them.** Only enter them in the app's settings, where they're stored locally on your device. Don't hardcode them into `index.html` or anything you push. If you ever leak one, revoke it (aistudio.google.com or console.anthropic.com) and make a new one.
+- **Anyone can visit your public app URL** — but they'd see an empty app connected to *their* browser storage and *their* Google account, never your data.
+
+Other privacy notes:
 - Receipts are stored in your browser's IndexedDB on each device.
-- Sync data goes only to a file in **your** Google Drive.
+- Sync data goes only to a file in **your** Google Drive (the app can only access the one file it creates).
 - Auto-fill images go only to Anthropic's API, only when you tap the button.
-- Nothing else leaves your device. There is no server, no analytics, no ads.
+- There is no server, no analytics, no ads.
 
 ---
 
@@ -151,7 +180,7 @@ The **✨ Auto-fill** button sends the receipt image to Claude, which extracts t
 
 **Google shows "unverified app" on first sign-in** — expected for a personal OAuth app. Advanced → continue, or add yourself as a test user.
 
-**Auto-fill says it needs an API key** — the keyless mode only works when the app runs inside claude.ai; on your own hosting, add an Anthropic API key in settings.
+**Auto-fill says it needs an API key** — add a free Gemini key from aistudio.google.com (or a paid Anthropic key) in Sync & AI settings.
 
 **PDF conversion fails** — pdf.js loads from a CDN, so the first PDF needs an internet connection.
 

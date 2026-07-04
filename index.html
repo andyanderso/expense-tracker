@@ -243,7 +243,8 @@ textarea{resize:vertical;min-height:60px}
       <h3>Sync &amp; AI settings</h3>
       <div class="field"><label for="sGClient">Google OAuth client ID <span style="text-transform:none;letter-spacing:0">(for Drive sync)</span></label><input type="text" id="sGClient" placeholder="1234…apps.googleusercontent.com" autocomplete="off"></div>
       <div class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="sAutoSync" checked style="width:20px;height:20px;flex:none"><label for="sAutoSync" style="margin:0">Auto-sync with Drive when the app opens</label></div>
-      <div class="field"><label for="sAKey">Anthropic API key <span style="text-transform:none;letter-spacing:0">(for auto-fill on your own hosting)</span></label><input type="password" id="sAKey" placeholder="sk-ant-…" autocomplete="off"></div>
+      <div class="field"><label for="sGemKey">Gemini API key <span style="text-transform:none;letter-spacing:0">(free — for AI auto-fill)</span></label><input type="password" id="sGemKey" placeholder="AIza… (free key from aistudio.google.com)" autocomplete="off"></div>
+      <div class="field"><label for="sAKey">Anthropic API key <span style="text-transform:none;letter-spacing:0">(paid alternative for auto-fill)</span></label><input type="password" id="sAKey" placeholder="sk-ant-…" autocomplete="off"></div>
       <button class="btn-ghost btn" id="saveSettingsBtn">Save settings</button>
       <p class="hint">Both keys are stored only on this device. Drive sync keeps one <b>expense-tracker-sync.json</b> file in your Google Drive and merges it with local data — run it on each device to stay in sync.</p>
     </div>
@@ -283,13 +284,16 @@ textarea{resize:vertical;min-height:60px}
 'use strict';
 
 /* ============ constants & state ============ */
+// Optional: paste your Google OAuth client ID between the quotes below and it
+// will be pre-filled on every device automatically (client IDs are public-safe).
+const DEFAULT_GCLIENT = '';
 const TYPES = ['Lodging','Meals','Transportation','Fuel','Airfare','Gear','Fees','Other'];
 let receipts = [];          // in-memory mirror (includes tombstones)
 let db = null;              // IndexedDB handle (null => memory-only)
 let currentPhoto = null;    // dataURL for the add form
 let editingId = null;       // if set, save updates instead of creating
 let openReceiptId = null;
-let settings = { gclient:'', akey:'' };
+let settings = { gclient:'', gkey:'', akey:'' };
 const live = () => receipts.filter(r => !r.deleted);
 
 const loadedScripts = {};
@@ -469,32 +473,53 @@ $('retakeBtn').addEventListener('click',()=>{
 });
 
 /* ============ AI auto-fill ============ */
+const EXTRACT_PROMPT = 'This image is a receipt or invoice. Extract its details and respond with ONLY a raw JSON object, no markdown fences, no commentary: {"vendor": string, "date": "YYYY-MM-DD", "amount": number (the grand total paid), "currency": 3-letter code like "USD", "type": one of '+JSON.stringify(TYPES)+', "notes": very short string or ""}. Use null for anything unreadable.';
+
+async function extractWithGemini(b64){
+  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(settings.gkey),{
+    method:'POST', headers:{'content-type':'application/json'},
+    body: JSON.stringify({contents:[{parts:[
+      {inline_data:{mime_type:'image/jpeg',data:b64}},
+      {text:EXTRACT_PROMPT}
+    ]}]})
+  });
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  const data = await resp.json();
+  return ((data.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+}
+
+async function extractWithClaude(b64){
+  const headers = {'content-type':'application/json'};
+  if(settings.akey){
+    headers['x-api-key'] = settings.akey;
+    headers['anthropic-version'] = '2023-06-01';
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  }
+  const resp = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST', headers:headers,
+    body: JSON.stringify({
+      model:'claude-sonnet-4-6',
+      max_tokens:1000,
+      messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
+        {type:'text',text:EXTRACT_PROMPT}
+      ]}]
+    })
+  });
+  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  const data = await resp.json();
+  return (data.content||[]).map(b=>b.text||'').join('');
+}
+
 $('aiBtn').addEventListener('click', async ()=>{
   if(!currentPhoto) return;
   const btn = $('aiBtn');
   btn.disabled = true; btn.textContent = 'Reading receipt…';
   try{
-    const headers = {'content-type':'application/json'};
-    if(settings.akey){
-      headers['x-api-key'] = settings.akey;
-      headers['anthropic-version'] = '2023-06-01';
-      headers['anthropic-dangerous-direct-browser-access'] = 'true';
-    }
-    const resp = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST', headers:headers,
-      body: JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:'image/jpeg',data:currentPhoto.split(',')[1]}},
-          {type:'text',text:'This image is a receipt or invoice. Extract its details and respond with ONLY a raw JSON object, no markdown fences, no commentary: {"vendor": string, "date": "YYYY-MM-DD", "amount": number (the grand total paid), "currency": 3-letter code like "USD", "type": one of '+JSON.stringify(TYPES)+', "notes": very short string or ""}. Use null for anything unreadable.'}
-        ]}]
-      })
-    });
-    if(!resp.ok) throw new Error('HTTP '+resp.status);
-    const data = await resp.json();
-    const text = (data.content||[]).map(b=>b.text||'').join('').replace(/```json|```/g,'').trim();
-    const x = JSON.parse(text);
+    const b64 = currentPhoto.split(',')[1];
+    const raw = settings.gkey ? await extractWithGemini(b64) : await extractWithClaude(b64);
+    const text = raw.replace(/```json|```/g,'').trim();
+    const x = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}')+1));
     if(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date)) $('fDate').value = x.date;
     if(x.amount != null && !isNaN(x.amount)) $('fAmount').value = Number(x.amount).toFixed(2);
     if(x.vendor) $('fVendor').value = x.vendor;
@@ -506,9 +531,9 @@ $('aiBtn').addEventListener('click', async ()=>{
     if(x.notes && !$('fNotes').value) $('fNotes').value = x.notes;
     toast('Fields filled — double-check the amount');
   }catch(err){
-    toast(settings.akey
+    toast((settings.gkey || settings.akey)
       ? 'Auto-fill failed — check your API key and connection'
-      : 'Auto-fill needs an Anthropic API key on this hosting — add one under Report → Sync & AI settings');
+      : 'Auto-fill needs an API key — a free Gemini key works (Report → Sync & AI settings)');
   }
   btn.disabled = false; btn.textContent = '✨ Auto-fill from receipt';
 });
@@ -911,6 +936,7 @@ $('restoreInput').addEventListener('change',e=>{
 /* ============ settings ============ */
 $('saveSettingsBtn').addEventListener('click',async ()=>{
   settings.gclient = $('sGClient').value.trim();
+  settings.gkey = $('sGemKey').value.trim();
   settings.akey = $('sAKey').value.trim();
   settings.autosync = $('sAutoSync').checked;
   await metaSet('settings', settings);
@@ -1013,10 +1039,12 @@ $('syncBtn').addEventListener('click', ()=>doSync(false));
     const saved = await metaGet('settings');
     if(saved){
       settings = Object.assign(settings, saved);
-      $('sGClient').value = settings.gclient||'';
-      $('sAKey').value = settings.akey||'';
-      $('sAutoSync').checked = settings.autosync !== false;
     }
+    if(!settings.gclient && DEFAULT_GCLIENT) settings.gclient = DEFAULT_GCLIENT;
+    $('sGClient').value = settings.gclient||'';
+    $('sGemKey').value = settings.gkey||'';
+    $('sAKey').value = settings.akey||'';
+    $('sAutoSync').checked = settings.autosync !== false;
     if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
     if(settings.gclient && settings.autosync !== false && navigator.onLine){
       setTimeout(()=>doSync(true), 600);
