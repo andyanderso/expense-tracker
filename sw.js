@@ -1,5 +1,5 @@
 /* Expense Tracker service worker — app-shell cache for offline use */
-const CACHE = 'expense-tracker-v2';
+const CACHE = 'expense-tracker-v7';
 const SHELL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

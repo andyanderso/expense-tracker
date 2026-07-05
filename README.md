@@ -61,6 +61,12 @@ Once installed, the app opens instantly and works with no signal — receipts yo
 
 ## 3. Daily use
 
+### Foreign-currency receipts & card reconciliation
+When a receipt is in a local currency (CAD, CLP, etc.) but your card was charged in USD, use the **Card charge — reconcile USD** section on the Add form: enter the USD amount from your card statement and attach a screenshot of the charge. The app then:
+- shows both amounts on the receipt (local on top, "$xx.xx card" underneath)
+- uses the **USD card amount in all totals and report summaries** (that's the real reimbursable number), falling back to the receipt currency when no card charge is entered
+- pairs the statement screenshot with the receipt photo in the exported report, so the reviewer sees the receipt and the proof of the exact USD charge side by side
+
 ### Adding a receipt
 1. Open the **＋ Add** tab.
 2. Tap **Snap receipt photo** (camera) or **…or choose a photo / PDF** (gallery, email attachments, e-tickets). PDFs are converted to images automatically (first 3 pages).
@@ -73,7 +79,8 @@ Filter by trip, employer, expense type, reimbursement status, or date range. Gro
 
 ### Tracking reimbursements
 - Every receipt starts as **Pending** (orange badge).
-- Tap a receipt → pick the date the money landed → **Mark reimbursed**. Green badge with the date appears everywhere.
+- **One receipt:** tap it → pick the date the money landed → **Mark reimbursed**. (The Edit form also has Reimbursed + date fields.) Green badge with the date appears everywhere.
+- **Several at once:** on the Receipts tab, tap **Select**, tap the receipts (or **Select all** for everything currently filtered), set the date, and hit **✓ Reimbursed** — or **Pending** to un-mark. Tip: filter to a trip or employer first, then Select all.
 - The header always shows your total outstanding — what you're still owed.
 
 ### History tab
@@ -85,7 +92,9 @@ A ledger of your reimbursements over time:
 ### Reports → Google Doc — Report tab
 1. Set a title, your name, and filters (trip, employer, dates). It defaults to **not-yet-reimbursed only**, which is usually what you want to submit.
 2. Check the on-screen summary, then tap **Download Word doc (.doc)**. The file contains a summary by expense type, an itemized table (with reimbursement status), and every receipt image with a caption.
-3. Upload the .doc to **Google Drive** and open it — Drive converts it to a Google Doc automatically. Share or submit from there.
+3. Get it into Drive either way:
+   - **📁 Save to Drive as Google Doc…** — the app opens a folder browser (starting at your configured sync folder), you drill to any folder and tap "Save in this folder". The report is uploaded and converted to a **native Google Doc** on the spot — no download/upload round-trip. Requires the Drive sync setup (client ID) below.
+   - **Download Word doc (.doc)** — downloads locally; upload it to Drive yourself and open it, and Drive converts it to a Google Doc.
 4. When you get paid, come back with the same filters and tap **✓ Mark these receipts reimbursed today** to flip the whole batch at once.
 
 There's also **Print / save as PDF** if PDF is preferred.
@@ -119,10 +128,11 @@ Sync keeps one file (`expense-tracker-sync.json`) in your own Google Drive and m
      - `https://YOUR-USERNAME.github.io`
      - `http://localhost:8000` (if you run it locally)
    - Create, then copy the **Client ID** (ends in `.apps.googleusercontent.com`). No client secret is needed.
-6. Give the app the client ID — two ways:
-   - **Per device:** Report tab → Sync & AI settings → paste → Save. You'd repeat this once on each device/browser, because settings are stored locally, not synced.
+6. **Optional — pick a Drive folder for the sync file.** By default the sync file lives in your Drive root using the minimal `drive.file` permission (the app can only see files it created). If you want the file in a specific folder, paste the folder's link or ID into **Settings tab → Drive folder for sync file** (or set the `DEFAULT_GFOLDER` constant near the top of `index.html` so all devices target it — folder IDs are safe to commit). **Tradeoff:** targeting an existing folder requires the app to request full Drive access instead of the minimal scope, because the minimal scope can't see folders it didn't create. For a personal app on your own account that's fine — but it's why the folder is optional. If a sync file already exists elsewhere from earlier syncs, the app automatically moves it into the folder on the next sync.
+7. Give the app the client ID — two ways:
+   - **Per device:** Settings tab → paste → Save. You'd repeat this once on each device/browser, because settings are stored locally, not synced.
    - **Once for all devices (recommended):** open `index.html`, find the line near the top of the script that reads `const DEFAULT_GCLIENT = '';`, paste your client ID between the quotes, and push the change. Every device then has it automatically. This is safe to commit publicly — see the privacy section below.
-7. Tap **⇅ Sync with Google Drive** and approve access on each device once.
+8. Tap **⇅ Sync with Google Drive** and approve access on each device once. (If you add or change the folder later, the next sync will ask for consent again — that's the scope change, approve it once.)
 
 **Auto-sync:** with the "Auto-sync when the app opens" box checked (it is by default), the app quietly syncs every time you open it. If the browser blocks the silent sign-in (usually only the very first time on a device), you'll get a toast asking you to tap the sync button once — after that, auto-sync runs cleanly.
 
@@ -136,7 +146,7 @@ The **✨ Auto-fill** button sends the receipt image to an AI model, which extra
 
 **Option A — Gemini (free, recommended):**
 1. Go to **aistudio.google.com**, sign in with your Google account, and click **Get API key** → Create API key. No credit card, no billing setup.
-2. Paste it in **Report tab → Sync & AI settings** → Save.
+2. Paste it in **Settings tab** → Save.
 3. The free tier covers Gemini Flash models with generous daily limits — far more than any realistic receipt volume. Genuinely $0.
 
 **Option B — Claude (paid, pay-as-you-go):**
@@ -151,7 +161,7 @@ Either key is stored only on your device and sent only to that provider's API wh
 
 ## 6. Backups
 
-**Backup data** (Report tab) downloads a single JSON file containing every receipt, photo included. **Restore** merges a backup back in — it's smart about timestamps, so restoring an old backup won't clobber newer edits. Even with Drive sync on, it's worth downloading a backup once in a while (especially on iPhone, where Safari can evict site data from apps you haven't opened in months).
+**Backup data** (Settings tab) downloads a single JSON file containing every receipt, photo included. **Restore** merges a backup back in — it's smart about timestamps, so restoring an old backup won't clobber newer edits. Even with Drive sync on, it's worth downloading a backup once in a while (especially on iPhone, where Safari can evict site data from apps you haven't opened in months).
 
 ---
 
@@ -180,7 +190,7 @@ Other privacy notes:
 
 **Google shows "unverified app" on first sign-in** — expected for a personal OAuth app. Advanced → continue, or add yourself as a test user.
 
-**Auto-fill says it needs an API key** — add a free Gemini key from aistudio.google.com (or a paid Anthropic key) in Sync & AI settings.
+**Auto-fill says it needs an API key** — add a free Gemini key from aistudio.google.com (or a paid Anthropic key) in the Settings tab.
 
 **PDF conversion fails** — pdf.js loads from a CDN, so the first PDF needs an internet connection.
 

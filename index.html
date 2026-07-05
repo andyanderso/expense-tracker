@@ -30,23 +30,28 @@
   --disp:'Barlow Condensed','Inter',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45;padding-bottom:90px}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45;padding-bottom:28px;overflow-x:hidden;max-width:100vw}
+img{max-width:100%}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
 
-/* ---------- header ---------- */
-header{background:var(--ink);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 12px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
-header h1{font-family:var(--disp);font-weight:700;font-size:24px;letter-spacing:.04em;text-transform:uppercase}
+/* ---------- top bar & tabs ---------- */
+#topbar{position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(34,48,58,.22)}
+header{background:var(--ink);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 8px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+header h1{font-family:var(--disp);font-weight:700;font-size:23px;letter-spacing:.04em;text-transform:uppercase}
 header h1 span{color:var(--canary)}
-.header-total{font-family:var(--mono);font-size:13px;color:#C8D2D9;text-align:right}
-.header-total b{display:block;font-size:17px;color:var(--canary);font-weight:600}
+.header-total{font-family:var(--mono);font-size:12.5px;color:#C8D2D9;text-align:right}
+.header-total b{display:block;font-size:16px;color:var(--canary);font-weight:600}
 
-/* ---------- tabs ---------- */
-nav{position:fixed;bottom:0;left:0;right:0;background:var(--ink);display:flex;z-index:50;padding-bottom:env(safe-area-inset-bottom,0px)}
-nav button{flex:1;background:none;border:none;color:#93A3AD;font-family:var(--disp);font-size:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:14px 0 12px;border-top:3px solid transparent}
-nav button.active{color:var(--canary);border-top-color:var(--canary)}
+nav{background:var(--ink);display:flex;align-items:center;border-top:1px solid #33434F;padding:0 6px}
+nav button{flex:1;background:none;border:none;color:#93A3AD;font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;padding:12px 0 10px;border-bottom:3px solid transparent}
+nav button.active{color:var(--canary);border-bottom-color:var(--canary)}
 nav button:focus-visible{outline:2px solid var(--canary);outline-offset:-2px}
+nav button.cta{flex:0 0 auto;background:var(--canary);color:var(--ink);border-radius:999px;padding:7px 16px;margin:7px 6px 7px 4px;border-bottom:none;font-weight:700;font-size:15px;box-shadow:0 1px 4px rgba(0,0,0,.3)}
+nav button.cta.active{box-shadow:inset 0 0 0 2px var(--ink),0 1px 4px rgba(0,0,0,.3);border-bottom:none;color:var(--ink)}
+nav button.gear{flex:0 0 46px;font-size:19px;padding:10px 0 9px;letter-spacing:0}
+nav button.gear.active{border-bottom-color:var(--canary)}
 
 main{max-width:640px;margin:0 auto;padding:16px}
 .tab{display:none}
@@ -87,7 +92,8 @@ textarea{resize:vertical;min-height:60px}
 .count-line{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);margin:10px 2px}
 .count-line b{color:var(--ink)}
 
-.group-head{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin:18px 2px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.group-head{font-family:var(--disp);font-size:17px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);margin:18px 2px 8px;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:2px 10px;min-width:0}
+.group-head>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .group-head .sum{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0}
 
 .slip{background:var(--card);border:1.5px solid var(--line);border-bottom:none;border-radius:var(--radius) var(--radius) 0 0;padding:12px 14px 14px;display:flex;gap:12px;align-items:center;width:100%;text-align:left}
@@ -95,9 +101,12 @@ textarea{resize:vertical;min-height:60px}
 .slip-tear{height:8px;background:var(--card);-webkit-clip-path:polygon(0 0,100% 0,100% 20%,97.5% 100%,95% 20%,92.5% 100%,90% 20%,87.5% 100%,85% 20%,82.5% 100%,80% 20%,77.5% 100%,75% 20%,72.5% 100%,70% 20%,67.5% 100%,65% 20%,62.5% 100%,60% 20%,57.5% 100%,55% 20%,52.5% 100%,50% 20%,47.5% 100%,45% 20%,42.5% 100%,40% 20%,37.5% 100%,35% 20%,32.5% 100%,30% 20%,27.5% 100%,25% 20%,22.5% 100%,20% 20%,17.5% 100%,15% 20%,12.5% 100%,10% 20%,7.5% 100%,5% 20%,2.5% 100%,0 20%);clip-path:polygon(0 0,100% 0,100% 20%,97.5% 100%,95% 20%,92.5% 100%,90% 20%,87.5% 100%,85% 20%,82.5% 100%,80% 20%,77.5% 100%,75% 20%,72.5% 100%,70% 20%,67.5% 100%,65% 20%,62.5% 100%,60% 20%,57.5% 100%,55% 20%,52.5% 100%,50% 20%,47.5% 100%,45% 20%,42.5% 100%,40% 20%,37.5% 100%,35% 20%,32.5% 100%,30% 20%,27.5% 100%,25% 20%,22.5% 100%,20% 20%,17.5% 100%,15% 20%,12.5% 100%,10% 20%,7.5% 100%,5% 20%,2.5% 100%,0 20%)}
 .slip .thumb{width:52px;height:52px;flex:none;border-radius:8px;object-fit:cover;border:1px solid var(--line);background:var(--paper)}
 .slip .thumb.ph{display:flex;align-items:center;justify-content:center;color:var(--ink-soft);font-size:20px}
-.slip .meta{flex:1;min-width:0}
-.slip .vendor{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.slip .sub{font-family:var(--mono);font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.slip .meta{flex:1 1 0;min-width:0;display:block}
+.slip .vrow{display:flex;align-items:baseline;gap:8px;min-width:0}
+.slip .vendor{font-weight:600;font-size:15px;flex:1 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.slip .vdate{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);flex:none}
+.slip .subline{display:block;font-family:var(--mono);font-size:12px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.slip .tagrow{display:block;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .slip .tag{display:inline-block;font-family:var(--disp);font-size:12.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--pine);margin-top:3px}
 .rstat{display:inline-block;font-family:var(--disp);font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
 .rstat.done{background:#E2EFE6;color:var(--pine)}
@@ -107,7 +116,27 @@ textarea{resize:vertical;min-height:60px}
 .reimb-box input[type=date]{flex:1;min-width:130px;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper)}
 .reimb-box button{border:none;border-radius:8px;padding:9px 14px;font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;background:var(--pine);color:#fff}
 .reimb-box button.undo{background:none;border:1.5px solid var(--line);color:var(--ink-soft)}
+.folder-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:11px 12px;margin-bottom:6px;font-size:15px;color:var(--ink)}
+.folder-row:focus-visible{outline:2px solid var(--canary)}
+.folder-row .ico{flex:none}
+.folder-row.back{background:none;border-style:dashed;color:var(--ink-soft)}
+.count-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 2px}
+.linkbtn{background:none;border:none;color:var(--canary-deep);font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:4px 6px}
+.linkbtn:focus-visible{outline:2px solid var(--canary)}
+.slip.selmode{outline:2px dashed var(--line);outline-offset:-2px}
+.slip.selected{outline:2.5px solid var(--canary-deep);outline-offset:-2.5px;background:#FFF9E8}
+#bulkBar{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:#fff;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));z-index:60;display:none;max-width:640px;margin:0 auto;border-radius:12px 12px 0 0}
+#bulkBar.show{display:block}
+.bulk-top{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:13px;margin-bottom:8px}
+.bulk-top span{flex:1}
+.bulk-top .linkbtn{color:var(--canary)}
+.bulk-actions{display:flex;gap:8px}
+.bulk-actions input[type=date]{flex:1;min-width:0;padding:8px;border:none;border-radius:8px;font-size:14px}
+.bulk-actions button{border:none;border-radius:8px;padding:9px 12px;font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+#bulkYesBtn{background:var(--pine);color:#fff}
+#bulkNoBtn{background:none;border:1.5px solid #5A6B76;color:#C8D2D9}
 .slip .amt{font-family:var(--mono);font-size:16px;font-weight:600;text-align:right;flex:none}
+.slip .amt small{display:block;font-size:11px;color:var(--ink-soft);font-weight:500}
 .empty{border:2px dashed var(--line);border-radius:var(--radius);padding:36px 20px;text-align:center;color:var(--ink-soft);margin-top:20px}
 .empty b{font-family:var(--disp);font-size:19px;letter-spacing:.05em;text-transform:uppercase;display:block;margin-bottom:6px;color:var(--ink)}
 
@@ -144,10 +173,19 @@ textarea{resize:vertical;min-height:60px}
 </head>
 <body>
 
+<div id="topbar">
 <header>
   <h1>Expense <span>Tracker</span></h1>
   <div class="header-total"><b id="headerTotal">$0.00</b><span id="headerCount">0 receipts</span></div>
 </header>
+<nav>
+  <button data-tab="tab-add" class="active cta">＋ Add</button>
+  <button data-tab="tab-list">Receipts</button>
+  <button data-tab="tab-history">History</button>
+  <button data-tab="tab-report">Report</button>
+  <button data-tab="tab-settings" class="gear" aria-label="Settings" title="Settings">⚙</button>
+</nav>
+</div>
 
 <main>
   <div class="banner" id="storageBanner">⚠ Persistent storage isn't available in this preview — receipts will vanish when you close the page. Deploy the file to GitHub Pages or open it directly in your phone's browser for permanent storage.</div>
@@ -160,6 +198,7 @@ textarea{resize:vertical;min-height:60px}
     <div class="photo-preview" id="photoPreview" style="display:none">
       <img id="previewImg" alt="Receipt photo preview">
       <button id="retakeBtn">Retake</button>
+      <button id="rotateBtn" style="right:auto;left:8px">↻ Rotate</button>
     </div>
     <button class="btn-ghost btn" id="galleryBtn" style="margin-bottom:14px">…or choose a photo / PDF</button>
     <button class="btn btn-dark" id="aiBtn" style="display:none;margin-bottom:14px">✨ Auto-fill from receipt</button>
@@ -175,11 +214,33 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
     <div class="field"><label for="fTrip">Trip</label><input type="text" id="fTrip" placeholder="e.g. Tantalus Heli Trip" list="dlTrip"><datalist id="dlTrip"></datalist></div>
+    <div class="panel" style="padding:12px 14px">
+      <h3 style="font-size:15px;margin-bottom:8px">Card charge — reconcile USD (optional)</h3>
+      <div class="row2" style="margin-bottom:0">
+        <div class="field" style="margin-bottom:0"><label for="fBilled">Charged (USD)</label><input type="number" id="fBilled" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
+        <div class="field" style="margin-bottom:0"><label id="billedLabel">Statement shot</label><button type="button" class="btn-ghost btn" id="billedBtn" style="padding:9px;margin:0">Add screenshot</button></div>
+      </div>
+      <div class="photo-preview" id="billedPreview" style="display:none;margin:12px 0 0">
+        <img id="billedImg" alt="Card statement screenshot">
+        <button id="billedRemove">Remove</button>
+      </div>
+      <input type="file" id="billedInput" accept="image/*" hidden>
+    </div>
     <div class="field"><label for="fEmployer">Employer / client</label><input type="text" id="fEmployer" placeholder="Who reimburses this" list="dlEmployer"><datalist id="dlEmployer"></datalist></div>
     <div class="field"><label id="typeLabel">Expense type</label>
       <div class="chips" id="typeChips" role="group" aria-labelledby="typeLabel"></div>
     </div>
     <div class="field"><label for="fNotes">Notes</label><textarea id="fNotes" placeholder="Optional"></textarea></div>
+    <div class="panel" style="padding:12px 14px">
+      <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <input type="checkbox" id="fReimb" style="width:20px;height:20px;flex:none">
+        <label for="fReimb" style="margin:0">Reimbursed</label>
+      </div>
+      <div class="field" id="fReimbDateWrap" style="display:none;margin-bottom:0">
+        <label for="fReimbDate">Date reimbursed</label>
+        <input type="date" id="fReimbDate">
+      </div>
+    </div>
     <button class="btn btn-primary" id="saveBtn">Save receipt</button>
   </section>
 
@@ -204,7 +265,7 @@ textarea{resize:vertical;min-height:60px}
         <option value="none">Group: none</option>
       </select>
     </div>
-    <div class="count-line" id="countLine"></div>
+    <div class="count-row"><div class="count-line" id="countLine" style="margin:0"></div><button class="linkbtn" id="selectModeBtn">Select</button></div>
     <div id="receiptList"></div>
   </section>
 
@@ -236,17 +297,23 @@ textarea{resize:vertical;min-height:60px}
       <table class="sum-table" id="rSummary"></table>
     </div>
     <button class="btn btn-primary" id="docBtn">Download Word doc (.doc)</button>
+    <button class="btn btn-primary" id="driveDocBtn" style="background:var(--pine);color:#fff">📁 Save to Drive as Google Doc…</button>
     <button class="btn btn-dark" id="printBtn">Print / save as PDF</button>
     <button class="btn btn-ghost" id="bulkReimbBtn" style="color:var(--pine);border-color:var(--pine)">✓ Mark these receipts reimbursed today</button>
-    <p class="hint"><b>To get it into Google Drive as a Google Doc:</b> upload the .doc file to Drive (or share it straight to the Drive app on your phone), then open it — Drive converts it to a Google Doc with the summary table and every receipt photo included. From there you can share or submit it.</p>
-    <div class="panel" style="margin-top:24px">
+    <p class="hint"><b>To get it into Google Drive as a Google Doc:</b> use "Save to Drive" above to pick a folder directly, or download the .doc and upload it yourself. When you get paid, return with the same filters and use the button above to flip the whole batch to reimbursed.</p>
+  </section>
+
+  <!-- ============ SETTINGS TAB ============ -->
+  <section class="tab" id="tab-settings">
+    <div class="panel">
       <h3>Sync &amp; AI settings</h3>
       <div class="field"><label for="sGClient">Google OAuth client ID <span style="text-transform:none;letter-spacing:0">(for Drive sync)</span></label><input type="text" id="sGClient" placeholder="1234…apps.googleusercontent.com" autocomplete="off"></div>
+      <div class="field"><label for="sFolder">Drive folder for sync file <span style="text-transform:none;letter-spacing:0">(paste folder link or ID; blank = Drive root)</span></label><input type="text" id="sFolder" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off"></div>
       <div class="field" style="display:flex;align-items:center;gap:10px"><input type="checkbox" id="sAutoSync" checked style="width:20px;height:20px;flex:none"><label for="sAutoSync" style="margin:0">Auto-sync with Drive when the app opens</label></div>
       <div class="field"><label for="sGemKey">Gemini API key <span style="text-transform:none;letter-spacing:0">(free — for AI auto-fill)</span></label><input type="password" id="sGemKey" placeholder="AIza… (free key from aistudio.google.com)" autocomplete="off"></div>
       <div class="field"><label for="sAKey">Anthropic API key <span style="text-transform:none;letter-spacing:0">(paid alternative for auto-fill)</span></label><input type="password" id="sAKey" placeholder="sk-ant-…" autocomplete="off"></div>
       <button class="btn-ghost btn" id="saveSettingsBtn">Save settings</button>
-      <p class="hint">Both keys are stored only on this device. Drive sync keeps one <b>expense-tracker-sync.json</b> file in your Google Drive and merges it with local data — run it on each device to stay in sync.</p>
+      <p class="hint">Keys are stored only on this device. Drive sync keeps one <b>expense-tracker-sync.json</b> file in your Google Drive and merges it with local data — run it on each device to stay in sync.</p>
     </div>
     <button class="btn btn-dark" id="syncBtn">⇅ Sync with Google Drive</button>
     <div class="settings-row">
@@ -257,12 +324,14 @@ textarea{resize:vertical;min-height:60px}
   </section>
 </main>
 
-<nav>
-  <button data-tab="tab-add" class="active">＋ Add</button>
-  <button data-tab="tab-list">Receipts</button>
-  <button data-tab="tab-history">History</button>
-  <button data-tab="tab-report">Report</button>
-</nav>
+<div id="bulkBar">
+  <div class="bulk-top"><span id="bulkCount">0 selected</span><button class="linkbtn" id="bulkAllBtn">Select all</button><button class="linkbtn" id="bulkCancelBtn">Cancel</button></div>
+  <div class="bulk-actions">
+    <input type="date" id="bulkDate" aria-label="Reimbursement date">
+    <button id="bulkYesBtn">✓ Reimbursed</button>
+    <button id="bulkNoBtn">Pending</button>
+  </div>
+</div>
 
 <div class="sheet-bg" id="sheetBg"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true">
@@ -277,6 +346,15 @@ textarea{resize:vertical;min-height:60px}
   <button class="btn btn-ghost" id="deleteBtn" style="color:var(--rust);border-color:var(--rust)">Delete receipt</button>
 </div>
 
+<div class="sheet" id="pickSheet" role="dialog" aria-modal="true" aria-label="Choose Drive folder">
+  <div class="grab"></div>
+  <h2 style="font-family:var(--disp);font-size:20px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px">Save report to Drive</h2>
+  <div class="count-line" id="pickPath" style="margin-top:0"></div>
+  <div id="pickList" style="margin-bottom:14px"></div>
+  <button class="btn btn-primary" id="pickSaveBtn">Save in this folder</button>
+  <button class="btn btn-ghost" id="pickCancelBtn">Cancel</button>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -287,14 +365,23 @@ textarea{resize:vertical;min-height:60px}
 // Optional: paste your Google OAuth client ID between the quotes below and it
 // will be pre-filled on every device automatically (client IDs are public-safe).
 const DEFAULT_GCLIENT = '';
+// Optional: Google Drive folder ID (or full folder link) where the sync file
+// should live. Folder IDs are safe to commit. Leave '' for Drive root.
+const DEFAULT_GFOLDER = '1GOI1SXSc6dtaOwCe6ZINJM99IlukgdPq';
 const TYPES = ['Lodging','Meals','Transportation','Fuel','Airfare','Gear','Fees','Other'];
 let receipts = [];          // in-memory mirror (includes tombstones)
 let db = null;              // IndexedDB handle (null => memory-only)
 let currentPhoto = null;    // dataURL for the add form
+let currentBilledImage = null; // dataURL of card statement screenshot
 let editingId = null;       // if set, save updates instead of creating
 let openReceiptId = null;
-let settings = { gclient:'', gkey:'', akey:'' };
+let settings = { gclient:'', gkey:'', akey:'', gfolder:'' };
 const live = () => receipts.filter(r => !r.deleted);
+function parseFolderId(v){
+  v = (v||'').trim();
+  const m = v.match(/folders\/([A-Za-z0-9_-]+)/);
+  return m ? m[1] : v.replace(/[?#].*$/,'');
+}
 
 const loadedScripts = {};
 function loadScript(src){
@@ -362,21 +449,95 @@ function metaSet(k,v){
 }
 
 /* ============ image handling ============ */
-function downscale(file){
+function loadBitmap(file){
+  // createImageBitmap with from-image guarantees EXIF rotation is applied,
+  // so sideways phone photos come in upright.
+  if('createImageBitmap' in window){
+    return createImageBitmap(file,{imageOrientation:'from-image'})
+      .catch(()=>createImageBitmap(file))
+      .catch(()=>loadBitmapLegacy(file));
+  }
+  return loadBitmapLegacy(file);
+}
+function loadBitmapLegacy(file){
   return new Promise((resolve,reject)=>{
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => {
-      const MAX = 1600;
-      let {width:w,height:h} = img;
-      if(Math.max(w,h) > MAX){ const s = MAX/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
-      const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
-      URL.revokeObjectURL(url);
-      resolve(cv.toDataURL('image/jpeg',0.82));
-    };
+    img.onload = () => { resolve(img); URL.revokeObjectURL(url); };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
     img.src = url;
+  });
+}
+
+// Trim uniform borders (table top, wall, etc.) around the receipt. Conservative:
+// bails out unless it's confident, so it never eats part of a receipt.
+function autoCrop(cv){
+  try{
+    const W=cv.width, H=cv.height;
+    const s=Math.min(1, 400/Math.max(W,H));
+    const w=Math.max(2,Math.round(W*s)), h=Math.max(2,Math.round(H*s));
+    const t=document.createElement('canvas'); t.width=w; t.height=h;
+    const cx=t.getContext('2d'); cx.drawImage(cv,0,0,w,h);
+    const d=cx.getImageData(0,0,w,h).data;
+    const px=(x,y)=>{const i=(y*w+x)*4; return [d[i],d[i+1],d[i+2]];};
+    // background reference = mean of all border pixels
+    let br=0,bg=0,bb=0,n=0;
+    for(let x=0;x<w;x++){ let p=px(x,0); br+=p[0];bg+=p[1];bb+=p[2]; p=px(x,h-1); br+=p[0];bg+=p[1];bb+=p[2]; n+=2; }
+    for(let y=0;y<h;y++){ let p=px(0,y); br+=p[0];bg+=p[1];bb+=p[2]; p=px(w-1,y); br+=p[0];bg+=p[1];bb+=p[2]; n+=2; }
+    br/=n; bg/=n; bb/=n;
+    const DIFF=95;
+    const diff=(x,y)=>{const p=px(x,y); return Math.abs(p[0]-br)+Math.abs(p[1]-bg)+Math.abs(p[2]-bb)>DIFF;};
+    const rowHas=y=>{let c=0,need=Math.max(2,w*0.03); for(let x=0;x<w;x++){ if(diff(x,y) && ++c>=need) return true; } return false;};
+    const colHas=x=>{let c=0,need=Math.max(2,h*0.03); for(let y=0;y<h;y++){ if(diff(x,y) && ++c>=need) return true; } return false;};
+    let top=0,bot=h-1,left=0,right=w-1;
+    while(top<bot && !rowHas(top)) top++;
+    while(bot>top && !rowHas(bot)) bot--;
+    while(left<right && !colHas(left)) left++;
+    while(right>left && !colHas(right)) right--;
+    const bw=right-left+1, bh=bot-top+1;
+    // sanity: content box must be substantial, and the crop must actually save space
+    if(bw < w*0.25 || bh < h*0.25) return cv;
+    if(bw*bh > w*h*0.92) return cv;
+    // 2% padding
+    const padX=Math.round(w*0.02), padY=Math.round(h*0.02);
+    left=Math.max(0,left-padX); right=Math.min(w-1,right+padX);
+    top=Math.max(0,top-padY); bot=Math.min(h-1,bot+padY);
+    // map back to full resolution
+    const inv=1/s;
+    const fx=Math.round(left*inv), fy=Math.round(top*inv);
+    const fw=Math.min(W-fx,Math.round((right-left+1)*inv)), fh=Math.min(H-fy,Math.round((bot-top+1)*inv));
+    const out=document.createElement('canvas'); out.width=fw; out.height=fh;
+    out.getContext('2d').drawImage(cv,fx,fy,fw,fh,0,0,fw,fh);
+    return out;
+  }catch(e){ return cv; }
+}
+
+async function downscale(file, doCrop){
+  const img = await loadBitmap(file);
+  const MAX = 1600;
+  let w = img.width, h = img.height;
+  if(Math.max(w,h) > MAX){ const s = MAX/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+  let cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+  cv.getContext('2d').drawImage(img,0,0,w,h);
+  if(img.close) img.close();
+  if(doCrop) cv = autoCrop(cv);
+  return cv.toDataURL('image/jpeg',0.82);
+}
+
+function rotate90(dataUrl){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = () => {
+      const cv = document.createElement('canvas');
+      cv.width = img.height; cv.height = img.width;
+      const cx = cv.getContext('2d');
+      cx.translate(cv.width/2, cv.height/2);
+      cx.rotate(Math.PI/2);
+      cx.drawImage(img, -img.width/2, -img.height/2);
+      resolve(cv.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror = () => reject(new Error('bad image'));
+    img.src = dataUrl;
   });
 }
 
@@ -422,6 +583,7 @@ document.querySelectorAll('nav button').forEach(b=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     $(b.dataset.tab).classList.add('active');
+    if(selectMode && b.dataset.tab!=='tab-list'){ selectMode=false; selectedIds.clear(); updateBulkBar(); }
     if(b.dataset.tab==='tab-list') renderList();
     if(b.dataset.tab==='tab-history') renderHistory();
     if(b.dataset.tab==='tab-report') renderReportSummary();
@@ -450,7 +612,7 @@ async function handleFile(e){
       toast('Converting PDF…');
       currentPhoto = await pdfToImage(f);
     } else {
-      currentPhoto = await downscale(f);
+      currentPhoto = await downscale(f, true);
     }
     $('previewImg').src = currentPhoto;
     $('photoPreview').style.display='block';
@@ -470,6 +632,31 @@ $('retakeBtn').addEventListener('click',()=>{
   $('photoBtn').style.display='block';
   $('galleryBtn').style.display='block';
   $('aiBtn').style.display='none';
+});
+$('rotateBtn').addEventListener('click',async ()=>{
+  if(!currentPhoto) return;
+  try{
+    currentPhoto = await rotate90(currentPhoto);
+    $('previewImg').src = currentPhoto;
+  }catch(e){ toast("Couldn't rotate that image"); }
+});
+
+/* ============ card statement screenshot ============ */
+$('billedBtn').addEventListener('click',()=>$('billedInput').click());
+$('billedInput').addEventListener('change',async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    currentBilledImage = await downscale(f, false);
+    $('billedImg').src = currentBilledImage;
+    $('billedPreview').style.display='block';
+    $('billedBtn').textContent='Replace screenshot';
+  }catch(err){ toast("Couldn't read that image"); }
+  e.target.value='';
+});
+$('billedRemove').addEventListener('click',()=>{
+  currentBilledImage=null;
+  $('billedPreview').style.display='none';
+  $('billedBtn').textContent='Add screenshot';
 });
 
 /* ============ AI auto-fill ============ */
@@ -538,6 +725,11 @@ $('aiBtn').addEventListener('click', async ()=>{
   btn.disabled = false; btn.textContent = '✨ Auto-fill from receipt';
 });
 
+$('fReimb').addEventListener('change',()=>{
+  $('fReimbDateWrap').style.display = $('fReimb').checked ? 'block' : 'none';
+  if($('fReimb').checked && !$('fReimbDate').value) $('fReimbDate').value = todayISO();
+});
+
 function resetForm(){
   editingId=null; currentPhoto=null;
   $('photoPreview').style.display='none';
@@ -545,7 +737,13 @@ function resetForm(){
   $('galleryBtn').style.display='block';
   $('aiBtn').style.display='none';
   $('fDate').value=todayISO();
-  ['fAmount','fVendor','fTrip','fEmployer','fNotes'].forEach(id=>$(id).value='');
+  ['fAmount','fVendor','fTrip','fEmployer','fNotes','fBilled'].forEach(id=>$(id).value='');
+  currentBilledImage=null;
+  $('billedPreview').style.display='none';
+  $('billedBtn').textContent='Add screenshot';
+  $('fReimb').checked=false;
+  $('fReimbDate').value='';
+  $('fReimbDateWrap').style.display='none';
   $('fCurrency').value='USD';
   buildChips(null);
   $('saveBtn').textContent='Save receipt';
@@ -555,19 +753,22 @@ $('saveBtn').addEventListener('click',async ()=>{
   const amount = parseFloat($('fAmount').value);
   if(!$('fDate').value){ toast('Add a date'); return; }
   if(isNaN(amount)){ toast('Add an amount'); return; }
+  const billed = parseFloat($('fBilled').value);
   const r = {
     id: editingId || (Date.now().toString(36)+Math.random().toString(36).slice(2,7)),
     date: $('fDate').value,
     amount: amount,
     currency: $('fCurrency').value,
+    billedAmount: isNaN(billed) ? null : billed,
+    billedImage: currentBilledImage,
     vendor: $('fVendor').value.trim(),
     trip: $('fTrip').value.trim(),
     employer: $('fEmployer').value.trim(),
     type: selectedType(),
     notes: $('fNotes').value.trim(),
     image: currentPhoto,
-    reimbursed: false,
-    reimbursedDate: null,
+    reimbursed: $('fReimb').checked,
+    reimbursedDate: $('fReimb').checked ? ($('fReimbDate').value || todayISO()) : null,
     deleted: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -576,8 +777,6 @@ $('saveBtn').addEventListener('click',async ()=>{
     const i = receipts.findIndex(x=>x.id===editingId);
     if(i>-1){
       r.createdAt = receipts[i].createdAt;
-      r.reimbursed = !!receipts[i].reimbursed;
-      r.reimbursedDate = receipts[i].reimbursedDate || null;
       receipts[i]=r;
     }
   } else {
@@ -627,7 +826,11 @@ function applyFilters(list, trip, employer, type, from, to, status){
 
 /* ============ totals ============ */
 function totalsByCurrency(list){
-  const t={}; list.forEach(r=>{ t[r.currency]=(t[r.currency]||0)+r.amount; });
+  const t={};
+  list.forEach(r=>{
+    if(r.billedAmount != null){ t['USD']=(t['USD']||0)+r.billedAmount; }
+    else { t[r.currency]=(t[r.currency]||0)+r.amount; }
+  });
   return t;
 }
 function totalsString(list){
@@ -656,16 +859,64 @@ function slipHTML(r){
   return '<div class="slip-wrap">'
     + '<button class="slip" data-id="'+r.id+'">'
     + thumb
-    + '<span class="meta"><span class="vendor">'+esc(r.vendor||'(no vendor)')+'</span>'
-    + '<span class="sub">'+esc(r.date)+(r.trip?' · '+esc(r.trip):'')+(r.employer?' · '+esc(r.employer):'')+'</span>'
-    + '<span class="tag">'+esc(r.type)+'</span>'
+    + '<span class="meta">'
+    + '<span class="vrow"><span class="vendor">'+esc(r.vendor||'(no vendor)')+'</span><span class="vdate">'+esc(r.date)+'</span></span>'
+    + (r.trip?'<span class="subline">'+esc(r.trip)+'</span>':'')
+    + (r.employer?'<span class="subline">'+esc(r.employer)+'</span>':'')
+    + '<span class="tagrow"><span class="tag">'+esc(r.type)+'</span>'
     + (r.reimbursed
         ? '<span class="rstat done">✓ '+esc(r.reimbursedDate||'reimbursed')+'</span>'
         : '<span class="rstat pend">Pending</span>')
     + '</span>'
-    + '<span class="amt">'+fmt(r.amount,r.currency)+'</span>'
+    + '</span>'
+    + '<span class="amt">'+fmt(r.amount,r.currency)
+    + (r.billedAmount!=null && r.currency!=='USD' ? '<small>'+fmt(r.billedAmount,'USD')+' card</small>' : '')
+    + '</span>'
     + '</button><div class="slip-tear"></div></div>';
 }
+/* ============ bulk select & edit ============ */
+let selectMode = false;
+let selectedIds = new Set();
+
+function updateBulkBar(){
+  $('bulkBar').classList.toggle('show', selectMode);
+  $('bulkCount').textContent = selectedIds.size + ' selected';
+  $('selectModeBtn').textContent = selectMode ? 'Done' : 'Select';
+  document.body.style.paddingBottom = selectMode ? '130px' : '';
+}
+function exitSelectMode(){
+  selectMode = false; selectedIds.clear(); updateBulkBar(); renderList();
+}
+$('selectModeBtn').addEventListener('click',()=>{
+  selectMode = !selectMode;
+  if(!selectMode) selectedIds.clear();
+  if(selectMode && !$('bulkDate').value) $('bulkDate').value = todayISO();
+  updateBulkBar(); renderList();
+});
+$('bulkCancelBtn').addEventListener('click', exitSelectMode);
+$('bulkAllBtn').addEventListener('click',()=>{
+  document.querySelectorAll('#receiptList .slip').forEach(el=>selectedIds.add(el.dataset.id));
+  updateBulkBar(); renderList();
+});
+async function bulkApply(reimbursed){
+  if(!selectedIds.size){ toast('Nothing selected'); return; }
+  const d = $('bulkDate').value || todayISO();
+  let n = 0;
+  for(const id of selectedIds){
+    const r = receipts.find(x=>x.id===id && !x.deleted);
+    if(!r) continue;
+    r.reimbursed = reimbursed;
+    r.reimbursedDate = reimbursed ? d : null;
+    r.updatedAt = Date.now();
+    await putReceipt(r); n++;
+  }
+  toast(n + (reimbursed ? ' marked reimbursed '+d : ' marked pending'));
+  exitSelectMode();
+  updateHeader(); renderReportSummary(); renderHistory();
+}
+$('bulkYesBtn').addEventListener('click',()=>bulkApply(true));
+$('bulkNoBtn').addEventListener('click',()=>bulkApply(false));
+
 function renderList(){
   const list = applyFilters(live(), $('filtTrip').value, $('filtEmployer').value, $('filtType').value, $('filtFrom').value, $('filtTo').value, $('filtStatus').value);
   const groupBy = $('filtGroup').value;
@@ -690,7 +941,20 @@ function renderList(){
     });
   }
   host.innerHTML = html;
-  host.querySelectorAll('.slip').forEach(el=>el.addEventListener('click',()=>openSheet(el.dataset.id)));
+  host.querySelectorAll('.slip').forEach(el=>{
+    if(selectMode){
+      el.classList.add('selmode');
+      if(selectedIds.has(el.dataset.id)) el.classList.add('selected');
+      el.addEventListener('click',()=>{
+        const id = el.dataset.id;
+        if(selectedIds.has(id)){ selectedIds.delete(id); el.classList.remove('selected'); }
+        else { selectedIds.add(id); el.classList.add('selected'); }
+        updateBulkBar();
+      });
+    } else {
+      el.addEventListener('click',()=>openSheet(el.dataset.id));
+    }
+  });
 }
 
 /* ============ reimbursement history ============ */
@@ -734,14 +998,18 @@ function openSheet(id){
   $('sheetBody').innerHTML =
     (r.image?'<img src="'+r.image+'" alt="Receipt photo">':'')
     + '<h2>'+esc(r.vendor||'(no vendor)')+'</h2>'
-    + '<div class="big-amt">'+fmt(r.amount,r.currency)+'</div>'
+    + '<div class="big-amt">'+fmt(r.amount,r.currency)
+    + (r.billedAmount!=null?' <span style="font-size:14px;color:var(--ink-soft)">· '+fmt(r.billedAmount,'USD')+' on card</span>':'')
+    + '</div>'
     + '<dl class="kv">'
     + '<dt>Date</dt><dd>'+esc(r.date)+'</dd>'
     + '<dt>Type</dt><dd>'+esc(r.type)+'</dd>'
+    + (r.billedAmount!=null?'<dt>Card (USD)</dt><dd>'+fmt(r.billedAmount,'USD')+'</dd>':'')
     + (r.trip?'<dt>Trip</dt><dd>'+esc(r.trip)+'</dd>':'')
     + (r.employer?'<dt>Employer</dt><dd>'+esc(r.employer)+'</dd>':'')
     + (r.notes?'<dt>Notes</dt><dd>'+esc(r.notes)+'</dd>':'')
-    + '</dl>';
+    + '</dl>'
+    + (r.billedImage?'<p style="font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px">Card statement</p><img src="'+r.billedImage+'" alt="Card statement screenshot">':'');
   const st = $('reimbStatus'), dt = $('reimbDate'), btn = $('reimbBtn');
   if(r.reimbursed){
     st.className='rstat done'; st.textContent='✓ Reimbursed '+(r.reimbursedDate||'');
@@ -767,13 +1035,13 @@ $('reimbBtn').addEventListener('click',async ()=>{
   toast(r.reimbursed ? 'Marked reimbursed '+r.reimbursedDate : 'Marked as pending');
 });
 function closeSheet(){ $('sheetBg').classList.remove('open'); $('sheet').classList.remove('open'); openReceiptId=null; }
-$('sheetBg').addEventListener('click',closeSheet);
+$('sheetBg').addEventListener('click',()=>{ closeSheet(); if($('pickSheet').classList.contains('open')){ $('pickSheet').classList.remove('open'); $('sheetBg').classList.remove('open'); } });
 
 $('deleteBtn').addEventListener('click',async ()=>{
   if(!openReceiptId) return;
   if(!confirm('Delete this receipt? This can\'t be undone.')) return;
   const r = receipts.find(x=>x.id===openReceiptId);
-  if(r){ r.deleted = true; r.image = null; r.updatedAt = Date.now(); await putReceipt(r); }
+  if(r){ r.deleted = true; r.image = null; r.billedImage = null; r.updatedAt = Date.now(); await putReceipt(r); }
   closeSheet(); renderList(); refreshFilters(); updateHeader(); renderHistory();
   toast('Receipt deleted');
 });
@@ -787,6 +1055,13 @@ $('editBtn').addEventListener('click',()=>{
   else { $('photoPreview').style.display='none'; $('photoBtn').style.display='block'; $('galleryBtn').style.display='block'; $('aiBtn').style.display='none'; }
   $('fDate').value=r.date; $('fAmount').value=r.amount; $('fCurrency').value=r.currency;
   $('fVendor').value=r.vendor; $('fTrip').value=r.trip; $('fEmployer').value=r.employer; $('fNotes').value=r.notes;
+  $('fBilled').value = r.billedAmount!=null ? r.billedAmount : '';
+  $('fReimb').checked = !!r.reimbursed;
+  $('fReimbDate').value = r.reimbursedDate || '';
+  $('fReimbDateWrap').style.display = r.reimbursed ? 'block' : 'none';
+  currentBilledImage = r.billedImage || null;
+  if(currentBilledImage){ $('billedImg').src=currentBilledImage; $('billedPreview').style.display='block'; $('billedBtn').textContent='Replace screenshot'; }
+  else { $('billedPreview').style.display='none'; $('billedBtn').textContent='Add screenshot'; }
   buildChips(r.type);
   $('saveBtn').textContent='Update receipt';
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
@@ -843,17 +1118,22 @@ function reportHTML(forWord){
   h += '<tr style="font-weight:bold;background:#eee"><td>Total</td><td>'+list.length+'</td><td>'+totalsString(list)+'</td></tr></table>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Itemized expenses</h2>';
-  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%"><tr style="background:#F2C744"><th align="left">#</th><th align="left">Date</th><th align="left">Vendor</th><th align="left">Type</th><th align="left">Trip</th><th align="left">Amount</th><th align="left">Reimbursed</th><th align="left">Notes</th></tr>';
+  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%"><tr style="background:#F2C744"><th align="left">#</th><th align="left">Date</th><th align="left">Vendor</th><th align="left">Type</th><th align="left">Trip</th><th align="left">Receipt amount</th><th align="left">Card charge (USD)</th><th align="left">Reimbursed</th><th align="left">Notes</th></tr>';
   list.forEach((r,i)=>{
-    h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td><td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
+    h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td><td>'+(r.billedAmount!=null?fmt(r.billedAmount,'USD'):'—')+'</td><td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
   });
   h += '</table>';
+  h += '<p style="font-family:Arial,sans-serif;font-size:9pt;color:#666">Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction and is used in the totals above; card statement images are attached alongside the corresponding receipts below.</p>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
   list.forEach((r,i)=>{
-    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+'</p>';
+    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'')+'</p>';
     if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?480:'')+'" style="max-width:100%;border:1px solid #999">';
     else h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#888">(no photo attached)</p>';
+    if(r.billedImage){
+      h += '<p style="font-family:Arial,sans-serif;font-size:10pt;margin:6pt 0 4pt"><b>Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':</b></p>';
+      h += '<img src="'+r.billedImage+'" width="'+(forWord?480:'')+'" style="max-width:100%;border:1px solid #999">';
+    }
   });
   return h;
 }
@@ -880,6 +1160,92 @@ $('printBtn').addEventListener('click',()=>{
   w.document.write('<html><head><title>Expense Report</title></head><body>'+reportHTML(false)+'</body></html>');
   w.document.close();
   w.onload = () => w.print();
+});
+
+/* ============ save report to Drive (folder picker) ============ */
+let pickStack = [];   // [{id,name}] breadcrumb, last = current folder
+
+function openPickSheet(){ $('sheetBg').classList.add('open'); $('pickSheet').classList.add('open'); }
+function closePickSheet(){ $('sheetBg').classList.remove('open'); $('pickSheet').classList.remove('open'); }
+$('pickCancelBtn').addEventListener('click', closePickSheet);
+
+async function listFolders(parentId, auth){
+  const q = encodeURIComponent("'"+parentId+"' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false");
+  const res = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&orderBy=name&pageSize=100&fields=files(id,name)',{headers:auth});
+  if(!res.ok) throw new Error('Drive folder list failed');
+  return (await res.json()).files || [];
+}
+
+async function renderPicker(){
+  const cur = pickStack[pickStack.length-1];
+  $('pickPath').innerHTML = pickStack.map(f=>'<b>'+esc(f.name)+'</b>').join(' / ');
+  $('pickList').innerHTML = '<div class="count-line">Loading folders…</div>';
+  try{
+    const token = await getGoogleToken(false, true);
+    const folders = await listFolders(cur.id, {Authorization:'Bearer '+token});
+    let html = '';
+    if(pickStack.length > 1){
+      html += '<button class="folder-row back" data-act="back"><span class="ico">‹</span> Back</button>';
+    }
+    folders.forEach(f=>{
+      html += '<button class="folder-row" data-id="'+esc(f.id)+'" data-name="'+esc(f.name)+'"><span class="ico">📁</span>'+esc(f.name)+'</button>';
+    });
+    $('pickList').innerHTML = html || '<div class="count-line">No subfolders — save here or go back.</div>';
+    $('pickList').querySelectorAll('.folder-row').forEach(el=>{
+      el.addEventListener('click',()=>{
+        if(el.dataset.act==='back'){ pickStack.pop(); }
+        else { pickStack.push({id:el.dataset.id, name:el.dataset.name}); }
+        renderPicker();
+      });
+    });
+  }catch(err){
+    $('pickList').innerHTML = '<div class="count-line">Couldn\'t load folders — check connection.</div>';
+  }
+}
+
+$('driveDocBtn').addEventListener('click', async ()=>{
+  const list = reportSet();
+  if(!list.length){ toast('No receipts match those filters'); return; }
+  if(!settings.gclient){ toast('Add a Google OAuth client ID in Sync & AI settings first'); return; }
+  // start browsing at the configured sync folder if set, else My Drive root
+  pickStack = [{id:'root', name:'My Drive'}];
+  if(settings.gfolder){
+    try{
+      const token = await getGoogleToken(false, true);
+      const res = await fetch('https://www.googleapis.com/drive/v3/files/'+settings.gfolder+'?fields=id,name',{headers:{Authorization:'Bearer '+token}});
+      if(res.ok){ const f = await res.json(); pickStack = [{id:'root',name:'My Drive'},{id:f.id,name:f.name}]; }
+    }catch(e){ /* fall back to root */ }
+  }
+  openPickSheet();
+  renderPicker();
+});
+
+$('pickSaveBtn').addEventListener('click', async ()=>{
+  const cur = pickStack[pickStack.length-1];
+  const btn = $('pickSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const token = await getGoogleToken(false, true);
+    const title = $('rTitle').value.trim() || 'Expense Report '+todayISO();
+    const doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>'+esc(title)+'</title></head><body>'+reportHTML(true)+'</body></html>';
+    const boundary = 'et'+Date.now();
+    // mimeType google-apps.document => Drive converts the upload into a native Google Doc
+    const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+      + JSON.stringify({name:title, mimeType:'application/vnd.google-apps.document', parents:[cur.id]})
+      + '\r\n--'+boundary+'\r\nContent-Type: application/msword\r\n\r\n'
+      + '\ufeff'+doc + '\r\n--'+boundary+'--';
+    const up = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+token, 'Content-Type':'multipart/related; boundary='+boundary},
+      body: body
+    });
+    if(!up.ok) throw new Error('upload failed ('+up.status+')');
+    closePickSheet();
+    toast('Saved to Drive as a Google Doc in "'+cur.name+'"');
+  }catch(err){
+    toast('Save failed: '+(err && err.message ? err.message : 'check connection'));
+  }
+  btn.disabled = false; btn.textContent = 'Save in this folder';
 });
 
 $('bulkReimbBtn').addEventListener('click',async ()=>{
@@ -936,6 +1302,8 @@ $('restoreInput').addEventListener('change',e=>{
 /* ============ settings ============ */
 $('saveSettingsBtn').addEventListener('click',async ()=>{
   settings.gclient = $('sGClient').value.trim();
+  settings.gfolder = parseFolderId($('sFolder').value);
+  $('sFolder').value = settings.gfolder;
   settings.gkey = $('sGemKey').value.trim();
   settings.akey = $('sAKey').value.trim();
   settings.autosync = $('sAutoSync').checked;
@@ -945,20 +1313,30 @@ $('saveSettingsBtn').addEventListener('click',async ()=>{
 
 /* ============ Google Drive sync ============ */
 const SYNC_NAME = 'expense-tracker-sync.json';
-let gToken = null, gTokenExp = 0;
+let gToken = null, gTokenExp = 0, gTokenScope = '';
 
-function getGoogleToken(silent){
+function driveScope(full){
+  // Writing into a user-chosen folder (or browsing folders) requires full
+  // Drive scope; otherwise we stay on the minimal drive.file scope.
+  return (full || settings.gfolder)
+    ? 'https://www.googleapis.com/auth/drive'
+    : 'https://www.googleapis.com/auth/drive.file';
+}
+
+function getGoogleToken(silent, full){
   return new Promise(async (resolve,reject)=>{
-    if(gToken && Date.now() < gTokenExp) return resolve(gToken);
+    const scope = driveScope(full);
+    if(gToken && gTokenScope===scope && Date.now() < gTokenExp) return resolve(gToken);
     try{ await loadScript('https://accounts.google.com/gsi/client'); }
     catch(e){ return reject(new Error('offline')); }
     try{
       const tc = google.accounts.oauth2.initTokenClient({
         client_id: settings.gclient,
-        scope: 'https://www.googleapis.com/auth/drive.file',
+        scope: scope,
         callback: t => {
           if(t && t.access_token){
             gToken = t.access_token;
+            gTokenScope = scope;
             gTokenExp = Date.now() + Math.max(0,(t.expires_in-60))*1000;
             resolve(gToken);
           } else reject(new Error('no token'));
@@ -980,11 +1358,27 @@ async function doSync(silent){
   try{
     const token = await getGoogleToken(silent);
     const auth = {Authorization:'Bearer '+token};
-    // find existing sync file
-    const q = encodeURIComponent("name='"+SYNC_NAME+"' and trashed=false");
-    const listRes = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name)&spaces=drive',{headers:auth});
-    if(!listRes.ok) throw new Error('Drive list failed');
-    const files = (await listRes.json()).files || [];
+    const folder = settings.gfolder;
+    // find existing sync file — prefer the configured folder, but also catch a
+    // file from earlier syncs elsewhere and move it into the folder
+    let baseQ = "name='"+SYNC_NAME+"' and trashed=false";
+    let q = encodeURIComponent(folder ? baseQ+" and '"+folder+"' in parents" : baseQ);
+    let listRes = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name,parents)&spaces=drive',{headers:auth});
+    if(!listRes.ok) throw new Error(listRes.status===404 ? 'folder not found — check the folder ID' : 'Drive list failed');
+    let files = (await listRes.json()).files || [];
+    if(folder && !files.length){
+      const q2 = encodeURIComponent(baseQ);
+      const res2 = await fetch('https://www.googleapis.com/drive/v3/files?q='+q2+'&fields=files(id,name,parents)&spaces=drive',{headers:auth});
+      if(res2.ok){
+        const strays = (await res2.json()).files || [];
+        if(strays.length){
+          const stray = strays[0];
+          const oldParents = (stray.parents||[]).join(',');
+          const mv = await fetch('https://www.googleapis.com/drive/v3/files/'+stray.id+'?addParents='+folder+(oldParents?'&removeParents='+oldParents:''),{method:'PATCH',headers:{...auth,'Content-Type':'application/json'},body:'{}'});
+          if(mv.ok) files = [stray];
+        }
+      }
+    }
     let fileId = files.length ? files[0].id : null;
     let pulled = 0;
     if(fileId){
@@ -1000,7 +1394,7 @@ async function doSync(silent){
     const payload = JSON.stringify({app:'expense-tracker', v:2, syncedAt:Date.now(), receipts:receipts});
     const boundary = 'rl'+Date.now();
     const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
-      + JSON.stringify({name:SYNC_NAME, mimeType:'application/json'})
+      + JSON.stringify(fileId ? {name:SYNC_NAME, mimeType:'application/json'} : {name:SYNC_NAME, mimeType:'application/json', parents: folder ? [folder] : []})
       + '\r\n--'+boundary+'\r\nContent-Type: application/json\r\n\r\n'
       + payload + '\r\n--'+boundary+'--';
     const upUrl = fileId
@@ -1041,7 +1435,9 @@ $('syncBtn').addEventListener('click', ()=>doSync(false));
       settings = Object.assign(settings, saved);
     }
     if(!settings.gclient && DEFAULT_GCLIENT) settings.gclient = DEFAULT_GCLIENT;
+    if(!settings.gfolder && DEFAULT_GFOLDER) settings.gfolder = parseFolderId(DEFAULT_GFOLDER);
     $('sGClient').value = settings.gclient||'';
+    $('sFolder').value = settings.gfolder||'';
     $('sGemKey').value = settings.gkey||'';
     $('sAKey').value = settings.akey||'';
     $('sAutoSync').checked = settings.autosync !== false;
