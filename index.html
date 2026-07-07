@@ -1266,10 +1266,18 @@ async function buildImageRun(docx, dataUrl){
   const size = fitImageSize(dims, REPORT_IMG_MAX_W, REPORT_IMG_MAX_H);
   return new docx.ImageRun({type: parts.type, data: parts.base64, transformation:{width:size.w, height:size.h}});
 }
+// US Letter page geometry in twips (1/20 pt). Table/cell widths are absolute
+// DXA twips (never WidthType.PERCENTAGE): Google Docs' .docx importer chokes on
+// percentage widths ("100%" strings + the placeholder 100-twip tblGrid the docx
+// lib emits when columnWidths is omitted), collapsing columns to ~0 wide so
+// every character wraps onto its own line.
+const DOCX_PAGE_W = 12240, DOCX_PAGE_H = 15840, DOCX_PAGE_MARGIN = 1440;
+const DOCX_CONTENT_W = DOCX_PAGE_W - DOCX_PAGE_MARGIN*2; // usable width between margins
+function docxColW(pct){ return Math.round(DOCX_CONTENT_W*pct/100); }
 function docxCell(docx, text, opts){
   opts = opts || {};
   return new docx.TableCell({
-    width: {size: opts.width||10, type: docx.WidthType.PERCENTAGE},
+    width: {size: opts.width||docxColW(10), type: docx.WidthType.DXA},
     shading: opts.header ? {fill:'F2C744', type: docx.ShadingType.CLEAR} : undefined,
     children: [new docx.Paragraph({children:[new docx.TextRun({text:String(text??''), bold: !!opts.bold || !!opts.header, size: 18})]})]
   });
@@ -1296,27 +1304,29 @@ async function buildReportDocx(){
   metaLines.forEach(line=>children.push(new docx.Paragraph({children:[new docx.TextRun({text:line, size:22, color:'444444'})]})));
 
   children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Summary by expense type', bold:true, size:28})], spacing:{before:200,after:80}}));
-  const summaryRows = [new docx.TableRow({children:[docxCell(docx,'Type',{header:true,width:40}), docxCell(docx,'Count',{header:true,width:20}), docxCell(docx,'Total',{header:true,width:40})]})];
+  const sumW = [40,20,40].map(docxColW); // Type / Count / Total, as % of content width -> twips
+  const summaryRows = [new docx.TableRow({children:[docxCell(docx,'Type',{header:true,width:sumW[0]}), docxCell(docx,'Count',{header:true,width:sumW[1]}), docxCell(docx,'Total',{header:true,width:sumW[2]})]})];
   Object.keys(byType).sort().forEach(t=>{
-    summaryRows.push(new docx.TableRow({children:[docxCell(docx,t,{width:40}), docxCell(docx,byType[t].length,{width:20}), docxCell(docx,totalsString(byType[t]),{width:40})]}));
+    summaryRows.push(new docx.TableRow({children:[docxCell(docx,t,{width:sumW[0]}), docxCell(docx,byType[t].length,{width:sumW[1]}), docxCell(docx,totalsString(byType[t]),{width:sumW[2]})]}));
   });
-  summaryRows.push(new docx.TableRow({children:[docxCell(docx,'Total',{bold:true,width:40}), docxCell(docx,list.length,{bold:true,width:20}), docxCell(docx,totalsString(list),{bold:true,width:40})]}));
-  children.push(new docx.Table({width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:summaryRows}));
+  summaryRows.push(new docx.TableRow({children:[docxCell(docx,'Total',{bold:true,width:sumW[0]}), docxCell(docx,list.length,{bold:true,width:sumW[1]}), docxCell(docx,totalsString(list),{bold:true,width:sumW[2]})]}));
+  children.push(new docx.Table({width:{size:DOCX_CONTENT_W,type:docx.WidthType.DXA}, columnWidths:sumW, rows:summaryRows}));
 
   children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Itemized expenses', bold:true, size:28})], spacing:{before:200,after:80}}));
   const hasBilled = list.some(r=>r.billedAmount!=null);
   const cols = hasBilled
     ? [['#',4],['Date',9],['Vendor',19],['Type',10],['Trip',10],['Receipt amount',11],['Card charge (USD)',12],['Reimbursed',9],['Notes',16]]
     : [['#',4],['Date',10],['Vendor',22],['Type',11],['Trip',11],['Receipt amount',13],['Reimbursed',10],['Notes',19]];
-  const itemRows = [new docx.TableRow({children: cols.map(c=>docxCell(docx,c[0],{header:true,width:c[1]}))})];
+  const itemW = cols.map(c=>docxColW(c[1]));
+  const itemRows = [new docx.TableRow({children: cols.map((c,ci)=>docxCell(docx,c[0],{header:true,width:itemW[ci]}))})];
   list.forEach((r,i)=>{
     const vals = [i+1, r.date, r.vendor, r.type, r.trip, fmt(r.amount,r.currency)];
     if(hasBilled) vals.push(r.billedAmount!=null?fmt(r.billedAmount,'USD'):'—');
     vals.push(r.reimbursed?(r.reimbursedDate||'Yes'):'No');
     vals.push(r.notes);
-    itemRows.push(new docx.TableRow({children: vals.map((v,ci)=>docxCell(docx,v,{width:cols[ci][1]}))}));
+    itemRows.push(new docx.TableRow({children: vals.map((v,ci)=>docxCell(docx,v,{width:itemW[ci]}))}));
   });
-  children.push(new docx.Table({width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:itemRows}));
+  children.push(new docx.Table({width:{size:DOCX_CONTENT_W,type:docx.WidthType.DXA}, columnWidths:itemW, rows:itemRows}));
   if(hasBilled) children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction and is used in the totals above; card statement images are attached alongside the corresponding receipts below.', size:18, color:'666666'})], spacing:{before:80}}));
 
   children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Receipt images', bold:true, size:28})], pageBreakBefore:true, spacing:{after:80}}));
@@ -1337,7 +1347,12 @@ async function buildReportDocx(){
     }
   }
 
-  const doc = new docx.Document({sections:[{children}]});
+  // explicit US Letter + 1in margins (docx defaults to A4 when unset); the
+  // DXA table widths above are computed from this same geometry
+  const doc = new docx.Document({sections:[{
+    properties:{page:{size:{width:DOCX_PAGE_W, height:DOCX_PAGE_H}, margin:{top:DOCX_PAGE_MARGIN, right:DOCX_PAGE_MARGIN, bottom:DOCX_PAGE_MARGIN, left:DOCX_PAGE_MARGIN}}},
+    children
+  }]});
   return docx.Packer.toBlob(doc);
 }
 
