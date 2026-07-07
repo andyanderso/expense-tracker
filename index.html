@@ -1142,11 +1142,11 @@ function reportHTML(forWord){
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
   list.forEach((r,i)=>{
     h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'')+'</p>';
-    if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?480:'')+'" style="max-width:100%;border:1px solid #999">';
+    if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
     else h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#888">(no photo attached)</p>';
     if(r.billedImage){
       h += '<p style="font-family:Arial,sans-serif;font-size:10pt;margin:6pt 0 4pt"><b>Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':</b></p>';
-      h += '<img src="'+r.billedImage+'" width="'+(forWord?480:'')+'" style="max-width:100%;border:1px solid #999">';
+      h += '<img src="'+r.billedImage+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
     }
   });
   return h;
@@ -1234,6 +1234,113 @@ $('driveDocBtn').addEventListener('click', async ()=>{
   renderPicker();
 });
 
+const DOCX_CDN = 'https://cdn.jsdelivr.net/npm/docx@9.7.1/dist/index.iife.js';
+function loadDocxLib(){ return loadScript(DOCX_CDN).then(()=>window.docx); }
+
+function dataUrlParts(dataUrl){
+  const m = dataUrl && /^data:image\/(jpeg|jpg|png|gif|bmp);base64,(.*)$/.exec(dataUrl);
+  if(!m) return null;
+  return { type: m[1]==='jpeg' ? 'jpg' : m[1], base64: m[2] };
+}
+function loadImageDims(dataUrl){
+  return new Promise(resolve=>{
+    if(!dataUrl) return resolve(null);
+    const img = new Image();
+    img.onload = () => resolve({w:img.naturalWidth||1, h:img.naturalHeight||1});
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+function fitImageSize(dims, maxW, maxH){
+  if(!dims) return {w:maxW, h:Math.round(maxW*0.75)};
+  const scale = Math.min(maxW/dims.w, maxH/dims.h, 1);
+  return {w:Math.max(1,Math.round(dims.w*scale)), h:Math.max(1,Math.round(dims.h*scale))};
+}
+// receipt/statement images are kept small and capped in height so a single
+// image (plus its caption) fits on one printed page instead of spanning pages
+const REPORT_IMG_MAX_W = 320, REPORT_IMG_MAX_H = 460;
+async function buildImageRun(docx, dataUrl){
+  const parts = dataUrlParts(dataUrl);
+  if(!parts) return null;
+  const dims = await loadImageDims(dataUrl);
+  const size = fitImageSize(dims, REPORT_IMG_MAX_W, REPORT_IMG_MAX_H);
+  return new docx.ImageRun({type: parts.type, data: parts.base64, transformation:{width:size.w, height:size.h}});
+}
+function docxCell(docx, text, opts){
+  opts = opts || {};
+  return new docx.TableCell({
+    width: {size: opts.width||10, type: docx.WidthType.PERCENTAGE},
+    shading: opts.header ? {fill:'F2C744', type: docx.ShadingType.CLEAR} : undefined,
+    children: [new docx.Paragraph({children:[new docx.TextRun({text:String(text??''), bold: !!opts.bold || !!opts.header, size: 18})]})]
+  });
+}
+
+async function buildReportDocx(){
+  const docx = await loadDocxLib();
+  const list = reportSet();
+  const title = $('rTitle').value.trim() || 'Expense Report';
+  const name = $('rName').value.trim();
+  const trip = $('rTrip').value, employer = $('rEmployer').value;
+  const from = $('rFrom').value, to = $('rTo').value;
+  const byType = {};
+  list.forEach(r=>{ (byType[r.type]=byType[r.type]||[]).push(r); });
+
+  const children = [];
+  children.push(new docx.Paragraph({children:[new docx.TextRun({text:title, bold:true, size:44})], spacing:{after:120}}));
+  const metaLines = [];
+  if(name) metaLines.push('Submitted by: '+name);
+  if(employer) metaLines.push('Employer / client: '+employer);
+  if(trip) metaLines.push('Trip: '+trip);
+  if(from||to) metaLines.push('Period: '+(from||'…')+' to '+(to||'…'));
+  metaLines.push('Generated: '+todayISO()+' · '+list.length+' receipt'+(list.length===1?'':'s'));
+  metaLines.forEach(line=>children.push(new docx.Paragraph({children:[new docx.TextRun({text:line, size:22, color:'444444'})]})));
+
+  children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Summary by expense type', bold:true, size:28})], spacing:{before:200,after:80}}));
+  const summaryRows = [new docx.TableRow({children:[docxCell(docx,'Type',{header:true,width:40}), docxCell(docx,'Count',{header:true,width:20}), docxCell(docx,'Total',{header:true,width:40})]})];
+  Object.keys(byType).sort().forEach(t=>{
+    summaryRows.push(new docx.TableRow({children:[docxCell(docx,t,{width:40}), docxCell(docx,byType[t].length,{width:20}), docxCell(docx,totalsString(byType[t]),{width:40})]}));
+  });
+  summaryRows.push(new docx.TableRow({children:[docxCell(docx,'Total',{bold:true,width:40}), docxCell(docx,list.length,{bold:true,width:20}), docxCell(docx,totalsString(list),{bold:true,width:40})]}));
+  children.push(new docx.Table({width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:summaryRows}));
+
+  children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Itemized expenses', bold:true, size:28})], spacing:{before:200,after:80}}));
+  const hasBilled = list.some(r=>r.billedAmount!=null);
+  const cols = hasBilled
+    ? [['#',4],['Date',9],['Vendor',19],['Type',10],['Trip',10],['Receipt amount',11],['Card charge (USD)',12],['Reimbursed',9],['Notes',16]]
+    : [['#',4],['Date',10],['Vendor',22],['Type',11],['Trip',11],['Receipt amount',13],['Reimbursed',10],['Notes',19]];
+  const itemRows = [new docx.TableRow({children: cols.map(c=>docxCell(docx,c[0],{header:true,width:c[1]}))})];
+  list.forEach((r,i)=>{
+    const vals = [i+1, r.date, r.vendor, r.type, r.trip, fmt(r.amount,r.currency)];
+    if(hasBilled) vals.push(r.billedAmount!=null?fmt(r.billedAmount,'USD'):'—');
+    vals.push(r.reimbursed?(r.reimbursedDate||'Yes'):'No');
+    vals.push(r.notes);
+    itemRows.push(new docx.TableRow({children: vals.map((v,ci)=>docxCell(docx,v,{width:cols[ci][1]}))}));
+  });
+  children.push(new docx.Table({width:{size:100,type:docx.WidthType.PERCENTAGE}, rows:itemRows}));
+  if(hasBilled) children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction and is used in the totals above; card statement images are attached alongside the corresponding receipts below.', size:18, color:'666666'})], spacing:{before:80}}));
+
+  children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Receipt images', bold:true, size:28})], pageBreakBefore:true, spacing:{after:80}}));
+  for(let i=0;i<list.length;i++){
+    const r = list[i];
+    const caption = 'Receipt '+(i+1)+': '+r.date+' · '+(r.vendor||'')+' · '+r.type+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'');
+    children.push(new docx.Paragraph({children:[new docx.TextRun({text:caption, bold:true, size:21})], pageBreakBefore: i>0, spacing:{after:60}}));
+    if(r.image){
+      const run = await buildImageRun(docx, r.image);
+      if(run) children.push(new docx.Paragraph({children:[run]}));
+    } else {
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:'(no photo attached)', italics:true, size:20, color:'888888'})]}));
+    }
+    if(r.billedImage){
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':', bold:true, size:20})], spacing:{before:80,after:40}}));
+      const brun = await buildImageRun(docx, r.billedImage);
+      if(brun) children.push(new docx.Paragraph({children:[brun]}));
+    }
+  }
+
+  const doc = new docx.Document({sections:[{children}]});
+  return docx.Packer.toBlob(doc);
+}
+
 $('pickSaveBtn').addEventListener('click', async ()=>{
   const cur = pickStack[pickStack.length-1];
   const btn = $('pickSaveBtn');
@@ -1241,15 +1348,19 @@ $('pickSaveBtn').addEventListener('click', async ()=>{
   try{
     const token = await getGoogleToken(false, true);
     const title = $('rTitle').value.trim() || 'Expense Report '+todayISO();
-    const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title></head><body>'+reportHTML(true)+'</body></html>';
+    const docxBlob = await buildReportDocx();
     const boundary = 'et'+Date.now();
     // mimeType google-apps.document => Drive converts the upload into a native Google Doc;
-    // uploaded as real text/html (not msword) so Drive's HTML importer keeps the inline
-    // data: URI receipt images, which its .doc importer was silently dropping
-    const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
-      + JSON.stringify({name:title, mimeType:'application/vnd.google-apps.document', parents:[cur.id]})
-      + '\r\n--'+boundary+'\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n'
-      + doc + '\r\n--'+boundary+'--';
+    // uploaded as a genuine .docx (built client-side with the docx library) since Drive's
+    // docx importer embeds images reliably, unlike its HTML/doc importers which were
+    // silently dropping the inline receipt images
+    const body = new Blob([
+      '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
+        + JSON.stringify({name:title, mimeType:'application/vnd.google-apps.document', parents:[cur.id]})
+        + '\r\n--'+boundary+'\r\nContent-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document\r\n\r\n',
+      docxBlob,
+      '\r\n--'+boundary+'--'
+    ]);
     const up = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',{
       method:'POST',
       headers:{Authorization:'Bearer '+token, 'Content-Type':'multipart/related; boundary='+boundary},
