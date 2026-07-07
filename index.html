@@ -189,6 +189,7 @@ textarea{resize:vertical;min-height:60px}
 
 <main>
   <div class="banner" id="storageBanner">⚠ Persistent storage isn't available in this preview — receipts will vanish when you close the page. Deploy the file to GitHub Pages or open it directly in your phone's browser for permanent storage.</div>
+  <div class="banner" id="syncBanner"></div>
 
   <!-- ============ ADD TAB ============ -->
   <section class="tab active" id="tab-add">
@@ -398,6 +399,7 @@ const $ = id => document.getElementById(id);
 const fmt = (n,c) => (c==='USD'?'$':c==='CAD'?'CA$':c==='EUR'?'€':c+' ') + Number(n||0).toFixed(2);
 const todayISO = () => new Date().toISOString().slice(0,10);
 const esc = s => String(s??'').replace(/[&<>"]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+function debounce(fn, wait){ let t; return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); }; }
 
 /* ============ storage ============ */
 function initDB(){
@@ -785,6 +787,7 @@ $('saveBtn').addEventListener('click',async ()=>{
   await putReceipt(r);
   resetForm(); refreshDatalists(); refreshFilters(); updateHeader();
   toast('Receipt saved');
+  scheduleAutoSync();
 });
 
 /* ============ datalists & filters ============ */
@@ -913,6 +916,7 @@ async function bulkApply(reimbursed){
   toast(n + (reimbursed ? ' marked reimbursed '+d : ' marked pending'));
   exitSelectMode();
   updateHeader(); renderReportSummary(); renderHistory();
+  if(n) scheduleAutoSync();
 }
 $('bulkYesBtn').addEventListener('click',()=>bulkApply(true));
 $('bulkNoBtn').addEventListener('click',()=>bulkApply(false));
@@ -1033,6 +1037,7 @@ $('reimbBtn').addEventListener('click',async ()=>{
   openSheet(r.id);
   renderList(); updateHeader(); renderReportSummary(); renderHistory();
   toast(r.reimbursed ? 'Marked reimbursed '+r.reimbursedDate : 'Marked as pending');
+  scheduleAutoSync();
 });
 function closeSheet(){ $('sheetBg').classList.remove('open'); $('sheet').classList.remove('open'); openReceiptId=null; }
 $('sheetBg').addEventListener('click',()=>{ closeSheet(); if($('pickSheet').classList.contains('open')){ $('pickSheet').classList.remove('open'); $('sheetBg').classList.remove('open'); } });
@@ -1044,6 +1049,7 @@ $('deleteBtn').addEventListener('click',async ()=>{
   if(r){ r.deleted = true; r.image = null; r.billedImage = null; r.updatedAt = Date.now(); await putReceipt(r); }
   closeSheet(); renderList(); refreshFilters(); updateHeader(); renderHistory();
   toast('Receipt deleted');
+  scheduleAutoSync();
 });
 
 $('editBtn').addEventListener('click',()=>{
@@ -1118,12 +1124,20 @@ function reportHTML(forWord){
   h += '<tr style="font-weight:bold;background:#eee"><td>Total</td><td>'+list.length+'</td><td>'+totalsString(list)+'</td></tr></table>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Itemized expenses</h2>';
-  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%"><tr style="background:#F2C744"><th align="left">#</th><th align="left">Date</th><th align="left">Vendor</th><th align="left">Type</th><th align="left">Trip</th><th align="left">Receipt amount</th><th align="left">Card charge (USD)</th><th align="left">Reimbursed</th><th align="left">Notes</th></tr>';
+  const hasBilled = list.some(r=>r.billedAmount!=null);
+  const cols = hasBilled
+    ? [['#','4%'],['Date','9%'],['Vendor','19%'],['Type','10%'],['Trip','10%'],['Receipt amount','11%'],['Card charge (USD)','12%'],['Reimbursed','9%'],['Notes','16%']]
+    : [['#','4%'],['Date','10%'],['Vendor','22%'],['Type','11%'],['Trip','11%'],['Receipt amount','13%'],['Reimbursed','10%'],['Notes','19%']];
+  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%;table-layout:fixed">';
+  h += '<colgroup>'+cols.map(c=>'<col width="'+c[1]+'">').join('')+'</colgroup>';
+  h += '<tr style="background:#F2C744">'+cols.map(c=>'<th align="left" style="width:'+c[1]+'">'+c[0]+'</th>').join('')+'</tr>';
   list.forEach((r,i)=>{
-    h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td><td>'+(r.billedAmount!=null?fmt(r.billedAmount,'USD'):'—')+'</td><td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
+    h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td>'
+      + (hasBilled ? '<td>'+(r.billedAmount!=null?fmt(r.billedAmount,'USD'):'—')+'</td>' : '')
+      + '<td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
   });
   h += '</table>';
-  h += '<p style="font-family:Arial,sans-serif;font-size:9pt;color:#666">Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction and is used in the totals above; card statement images are attached alongside the corresponding receipts below.</p>';
+  if(hasBilled) h += '<p style="font-family:Arial,sans-serif;font-size:9pt;color:#666">Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction and is used in the totals above; card statement images are attached alongside the corresponding receipts below.</p>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
   list.forEach((r,i)=>{
@@ -1227,13 +1241,15 @@ $('pickSaveBtn').addEventListener('click', async ()=>{
   try{
     const token = await getGoogleToken(false, true);
     const title = $('rTitle').value.trim() || 'Expense Report '+todayISO();
-    const doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>'+esc(title)+'</title></head><body>'+reportHTML(true)+'</body></html>';
+    const doc = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+esc(title)+'</title></head><body>'+reportHTML(true)+'</body></html>';
     const boundary = 'et'+Date.now();
-    // mimeType google-apps.document => Drive converts the upload into a native Google Doc
+    // mimeType google-apps.document => Drive converts the upload into a native Google Doc;
+    // uploaded as real text/html (not msword) so Drive's HTML importer keeps the inline
+    // data: URI receipt images, which its .doc importer was silently dropping
     const body = '--'+boundary+'\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n'
       + JSON.stringify({name:title, mimeType:'application/vnd.google-apps.document', parents:[cur.id]})
-      + '\r\n--'+boundary+'\r\nContent-Type: application/msword\r\n\r\n'
-      + '\ufeff'+doc + '\r\n--'+boundary+'--';
+      + '\r\n--'+boundary+'\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n'
+      + doc + '\r\n--'+boundary+'--';
     const up = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',{
       method:'POST',
       headers:{Authorization:'Bearer '+token, 'Content-Type':'multipart/related; boundary='+boundary},
@@ -1256,6 +1272,7 @@ $('bulkReimbBtn').addEventListener('click',async ()=>{
   for(const r of pend){ r.reimbursed=true; r.reimbursedDate=d; r.updatedAt=Date.now(); await putReceipt(r); }
   renderReportSummary(); renderList(); updateHeader(); renderHistory();
   toast(pend.length+' marked reimbursed '+d);
+  scheduleAutoSync();
 });
 
 /* ============ backup / restore ============ */
@@ -1293,6 +1310,7 @@ $('restoreInput').addEventListener('change',e=>{
       const n = await mergeIn(data.receipts);
       refreshDatalists(); refreshFilters(); updateHeader(); renderList(); renderReportSummary();
       toast('Merged '+n+' change'+(n===1?'':'s')+' from backup');
+      if(n) scheduleAutoSync();
     }catch(err){ toast("That file isn't a Expense Tracker backup"); }
   };
   rd.readAsText(f);
@@ -1314,6 +1332,9 @@ $('saveSettingsBtn').addEventListener('click',async ()=>{
 /* ============ Google Drive sync ============ */
 const SYNC_NAME = 'expense-tracker-sync.json';
 let gToken = null, gTokenExp = 0, gTokenScope = '';
+let lastSyncOk = null, lastSyncAt = 0, lastSyncSuccessAt = 0;
+let syncInFlight = false, syncIntervalId = null;
+const AUTO_SYNC_DEBOUNCE_MS = 1500, AUTO_SYNC_INTERVAL_MS = 60000, SYNC_STALE_MS = 5*60000;
 
 function driveScope(full){
   // Writing into a user-chosen folder (or browsing folders) requires full
@@ -1338,6 +1359,7 @@ function getGoogleToken(silent, full){
             gToken = t.access_token;
             gTokenScope = scope;
             gTokenExp = Date.now() + Math.max(0,(t.expires_in-60))*1000;
+            metaSet('gtoken', {token: gToken, exp: gTokenExp, scope: gTokenScope});
             resolve(gToken);
           } else reject(new Error('no token'));
         },
@@ -1353,6 +1375,8 @@ async function doSync(silent){
     if(!silent) toast('Add a Google OAuth client ID in Sync & AI settings first');
     return;
   }
+  if(syncInFlight) return;
+  syncInFlight = true;
   const btn = $('syncBtn');
   btn.disabled = true; btn.textContent = '⇅ Syncing…';
   try{
@@ -1364,6 +1388,7 @@ async function doSync(silent){
     let baseQ = "name='"+SYNC_NAME+"' and trashed=false";
     let q = encodeURIComponent(folder ? baseQ+" and '"+folder+"' in parents" : baseQ);
     let listRes = await fetch('https://www.googleapis.com/drive/v3/files?q='+q+'&fields=files(id,name,parents)&spaces=drive',{headers:auth});
+    if(listRes.status===401){ gToken=null; gTokenExp=0; metaSet('gtoken',null); throw new Error('sign-in expired — try syncing again'); }
     if(!listRes.ok) throw new Error(listRes.status===404 ? 'folder not found — check the folder ID' : 'Drive list failed');
     let files = (await listRes.json()).files || [];
     if(folder && !files.length){
@@ -1405,19 +1430,57 @@ async function doSync(silent){
       headers: {...auth, 'Content-Type':'multipart/related; boundary='+boundary},
       body: body
     });
+    if(up.status===401){ gToken=null; gTokenExp=0; metaSet('gtoken',null); throw new Error('sign-in expired — try syncing again'); }
     if(!up.ok) throw new Error('Drive upload failed');
     refreshDatalists(); refreshFilters(); updateHeader(); renderList(); renderReportSummary(); renderHistory();
     toast(pulled ? 'Synced — pulled '+pulled+' change'+(pulled===1?'':'s') : 'Synced with Drive');
+    lastSyncOk = true; lastSyncAt = Date.now(); lastSyncSuccessAt = lastSyncAt;
   }catch(err){
     if(silent){
       toast('Auto-sync needs a tap — hit ⇅ Sync on the Report tab');
     } else {
       toast('Sync failed: '+(err && err.message ? err.message : 'check connection and client ID'));
     }
+    lastSyncOk = false; lastSyncAt = Date.now();
   }
   btn.disabled = false; btn.textContent = '⇅ Sync with Google Drive';
+  syncInFlight = false;
+  updateSyncBanner();
 }
 $('syncBtn').addEventListener('click', ()=>doSync(false));
+
+function autoSyncAllowed(){ return !!settings.gclient && settings.autosync !== false && navigator.onLine; }
+const scheduleAutoSync = debounce(()=>{ if(autoSyncAllowed() && !syncInFlight) doSync(true); }, AUTO_SYNC_DEBOUNCE_MS);
+
+function startSyncInterval(){
+  if(syncIntervalId) return;
+  syncIntervalId = setInterval(()=>{ if(document.visibilityState==='visible' && navigator.onLine) doSync(true); }, AUTO_SYNC_INTERVAL_MS);
+}
+function stopSyncInterval(){
+  if(syncIntervalId){ clearInterval(syncIntervalId); syncIntervalId = null; }
+}
+function handleVisibilityOrOnlineChange(){
+  if(document.visibilityState==='visible' && navigator.onLine){
+    startSyncInterval();
+    doSync(true);
+  } else {
+    stopSyncInterval();
+  }
+  updateSyncBanner();
+}
+document.addEventListener('visibilitychange', handleVisibilityOrOnlineChange);
+window.addEventListener('online', handleVisibilityOrOnlineChange);
+window.addEventListener('offline', handleVisibilityOrOnlineChange);
+
+function updateSyncBanner(){
+  const el = $('syncBanner');
+  const stale = settings.gclient && settings.autosync !== false && navigator.onLine
+    && (lastSyncOk === false || (lastSyncAt > 0 && Date.now() - lastSyncSuccessAt > SYNC_STALE_MS));
+  el.textContent = lastSyncOk === false
+    ? '⚠ Drive sync failed — check your connection. Retrying automatically.'
+    : "⚠ Drive sync hasn't succeeded recently — recent changes may not be backed up yet.";
+  el.classList.toggle('show', !!stale);
+}
 
 /* ============ boot ============ */
 (async function boot(){
@@ -1442,9 +1505,14 @@ $('syncBtn').addEventListener('click', ()=>doSync(false));
     $('sAKey').value = settings.akey||'';
     $('sAutoSync').checked = settings.autosync !== false;
     if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
-    if(settings.gclient && settings.autosync !== false && navigator.onLine){
+    const savedToken = await metaGet('gtoken');
+    if(savedToken && savedToken.token && Date.now() < (savedToken.exp||0) && savedToken.scope === driveScope(false)){
+      gToken = savedToken.token; gTokenExp = savedToken.exp; gTokenScope = savedToken.scope;
+    }
+    if(autoSyncAllowed()){
       setTimeout(()=>doSync(true), 600);
     }
+    if(document.visibilityState==='visible') startSyncInterval();
   } else {
     $('storageBanner').classList.add('show');
   }

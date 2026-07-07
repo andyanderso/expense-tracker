@@ -15,7 +15,7 @@ Your data lives on your own devices and (optionally) in your own Google Drive. N
 | `sw.js` | Service worker — makes the app work offline |
 | `icon-192.png`, `icon-512.png` | App icons |
 
-Keep all five files together in the same folder.
+Keep these files together in the same folder (plus `README.md` and `CLAUDE.md`).
 
 ---
 
@@ -115,10 +115,9 @@ Sync keeps one file (`expense-tracker-sync.json`) in your own Google Drive and m
    - Under **Test users**, click **+ Add users**, type your own Gmail address, and **Save**.
    - Done. The app stays in "Testing" status forever, which is fine — you're the only user. You may need to re-approve access occasionally.
 
-   **Path B — publish the app (set-and-forget):**
+   **Path B — publish the app:**
    - On the same page, find **Publishing status** and click **Publish app**, then confirm.
-   - This app only uses the `drive.file` scope, which Google classifies as non-sensitive, so publishing requires **no verification review** — the button just works, and you won't be nagged to re-consent.
-   - Recommended if you don't want to think about it again.
+   - **Caveat:** this works review-free only while the app uses the minimal `drive.file` scope (no sync folder configured). If you configure a Drive folder (see step 6), the app requests the full `drive` scope, which Google classifies as **restricted** — a published app with that scope will keep showing the "unverified" warning and Google may nag about verification. **If you use the folder feature, prefer Path A.**
 
    Either way, the first time you sign in you may see a "Google hasn't verified this app" screen — click **Advanced → Go to [app name]**. It's your own app; the warning is just Google's default for personal OAuth apps.
 
@@ -134,9 +133,9 @@ Sync keeps one file (`expense-tracker-sync.json`) in your own Google Drive and m
    - **Once for all devices (recommended):** open `index.html`, find the line near the top of the script that reads `const DEFAULT_GCLIENT = '';`, paste your client ID between the quotes, and push the change. Every device then has it automatically. This is safe to commit publicly — see the privacy section below.
 8. Tap **⇅ Sync with Google Drive** and approve access on each device once. (If you add or change the folder later, the next sync will ask for consent again — that's the scope change, approve it once.)
 
-**Auto-sync:** with the "Auto-sync when the app opens" box checked (it is by default), the app quietly syncs every time you open it. If the browser blocks the silent sign-in (usually only the very first time on a device), you'll get a toast asking you to tap the sync button once — after that, auto-sync runs cleanly.
+**Auto-sync:** with the "Auto-sync when the app opens" box checked (it is by default), the app syncs quietly and continuously: when you open it, on every receipt save/edit/delete/reimbursement change, and about once a minute while the app stays open and visible (paused while the tab is hidden or offline, and it catches up immediately when you switch back or reconnect). Your sign-in is remembered across page reloads for as long as it stays valid (roughly an hour, refreshed automatically in the background), so you shouldn't need to re-authorize every time you open or refresh the app — only after it's been closed long enough for that session to expire. If sync can't succeed (offline, or the browser blocks the silent sign-in), a banner appears asking you to tap the sync button once; it clears itself as soon as sync succeeds again.
 
-The app requests only the `drive.file` permission, meaning it can see and touch **only the one file it creates** — nothing else in your Drive.
+**What the app can access:** with no sync folder configured, it requests only the minimal `drive.file` permission — it can see and touch **only files it creates**. With a sync folder configured (or when using the report folder browser), it requests full Drive access so it can write into folders it didn't create; even then, the app itself only ever reads/writes its one sync file and the reports you explicitly save.
 
 ---
 
@@ -176,8 +175,8 @@ Either key is stored only on your device and sent only to that provider's API wh
 
 Other privacy notes:
 - Receipts are stored in your browser's IndexedDB on each device.
-- Sync data goes only to a file in **your** Google Drive (the app can only access the one file it creates).
-- Auto-fill images go only to Anthropic's API, only when you tap the button.
+- Sync data goes only to a file in **your** Google Drive. (Scope depends on setup — see "What the app can access" in the sync section.)
+- Auto-fill images go only to the AI provider you configured — Gemini or Anthropic — and only when you tap the button.
 - There is no server, no analytics, no ads.
 
 ---
