@@ -1141,11 +1141,11 @@ function reportHTML(forWord){
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
   list.forEach((r,i)=>{
-    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'')+'</p>';
+    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt;page-break-after:avoid'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'')+'</p>';
     if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
     else h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#888">(no photo attached)</p>';
     if(r.billedImage){
-      h += '<p style="font-family:Arial,sans-serif;font-size:10pt;margin:6pt 0 4pt"><b>Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':</b></p>';
+      h += '<p style="font-family:Arial,sans-serif;font-size:10pt;margin:6pt 0 4pt;page-break-after:avoid"><b>Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':</b></p>';
       h += '<img src="'+r.billedImage+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
     }
   });
@@ -1323,17 +1323,19 @@ async function buildReportDocx(){
   for(let i=0;i<list.length;i++){
     const r = list[i];
     const caption = 'Receipt '+(i+1)+': '+r.date+' · '+(r.vendor||'')+' · '+r.type+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'');
-    children.push(new docx.Paragraph({children:[new docx.TextRun({text:caption, bold:true, size:21})], pageBreakBefore: i>0, spacing:{after:60}}));
+    // keepNext ties each caption to the paragraph right after it (its image, or the
+    // "no photo attached" note) so Word/Docs pagination can't strand the label alone
+    children.push(new docx.Paragraph({children:[new docx.TextRun({text:caption, bold:true, size:21})], pageBreakBefore: i>0, keepNext:true, spacing:{after:60}}));
     if(r.image){
       const run = await buildImageRun(docx, r.image);
-      if(run) children.push(new docx.Paragraph({children:[run]}));
+      if(run) children.push(new docx.Paragraph({children:[run], keepLines:true}));
     } else {
       children.push(new docx.Paragraph({children:[new docx.TextRun({text:'(no photo attached)', italics:true, size:20, color:'888888'})]}));
     }
     if(r.billedImage){
-      children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':', bold:true, size:20})], spacing:{before:80,after:40}}));
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':', bold:true, size:20})], keepNext:true, spacing:{before:80,after:40}}));
       const brun = await buildImageRun(docx, r.billedImage);
-      if(brun) children.push(new docx.Paragraph({children:[brun]}));
+      if(brun) children.push(new docx.Paragraph({children:[brun], keepLines:true}));
     }
   }
 
