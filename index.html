@@ -71,6 +71,7 @@ textarea{resize:vertical;min-height:60px}
 .photo-preview{position:relative;margin-bottom:14px}
 .photo-preview img{width:100%;border-radius:var(--radius);border:1.5px solid var(--line);display:block}
 .photo-preview button{position:absolute;top:8px;right:8px;background:var(--ink);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:13px}
+.drop-active{outline:2px dashed var(--canary-deep);outline-offset:4px;border-radius:var(--radius)}
 
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:7px 14px;font-size:14px;color:var(--ink-soft)}
@@ -195,13 +196,16 @@ textarea{resize:vertical;min-height:60px}
   <section class="tab active" id="tab-add">
     <input type="file" id="photoInput" accept="image/*" capture="environment" hidden>
     <input type="file" id="photoInputGallery" accept="image/*,application/pdf" hidden>
-    <button class="photo-btn" id="photoBtn"><span class="cam">📷</span>Snap receipt photo</button>
-    <div class="photo-preview" id="photoPreview" style="display:none">
-      <img id="previewImg" alt="Receipt photo preview">
-      <button id="retakeBtn">Retake</button>
-      <button id="rotateBtn" style="right:auto;left:8px">↻ Rotate</button>
+    <div id="photoDropZone">
+      <button class="photo-btn" id="photoBtn"><span class="cam">📷</span>Snap receipt photo</button>
+      <div class="photo-preview" id="photoPreview" style="display:none">
+        <img id="previewImg" alt="Receipt photo preview">
+        <button id="retakeBtn">Retake</button>
+        <button id="rotateBtn" style="right:auto;left:8px">↻ Rotate</button>
+      </div>
+      <button class="btn-ghost btn" id="galleryBtn" style="margin-bottom:14px">…or choose a photo / PDF</button>
+      <p class="hint" id="photoDropHint" style="margin:-6px 0 14px;text-align:center">…or paste (Ctrl+V) or drag an image here</p>
     </div>
-    <button class="btn-ghost btn" id="galleryBtn" style="margin-bottom:14px">…or choose a photo / PDF</button>
     <div class="field" id="aiHintWrap" style="display:none"><label for="fAiHint">Note for AI (optional, this receipt only)</label><input type="text" id="fAiHint" placeholder="e.g. &quot;tip is included in the total&quot;"></div>
     <button class="btn btn-dark" id="aiBtn" style="display:none;margin-bottom:14px">✨ Auto-fill from receipt</button>
 
@@ -216,9 +220,9 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
     <div class="field"><label for="fTrip">Trip</label><input type="text" id="fTrip" placeholder="e.g. Tantalus Heli Trip" list="dlTrip"><datalist id="dlTrip"></datalist></div>
-    <div class="panel" style="padding:12px 14px">
+    <div class="panel" id="billedPanel" style="padding:12px 14px">
       <h3 style="font-size:15px;margin-bottom:8px">Card charges — reconcile USD (optional)</h3>
-      <p class="hint" style="margin-top:0">Add one row per separate card charge for this receipt — e.g. lodging and parking on one invoice, billed separately.</p>
+      <p class="hint" style="margin-top:0">Add one row per separate card charge for this receipt — e.g. lodging and parking on one invoice, billed separately. Click a charge's amount field, then paste (Ctrl+V) or drag its statement screenshot in.</p>
       <div id="billedRows"></div>
       <button type="button" class="btn-ghost btn" id="billedAddBtn" style="margin-top:4px">+ Add card charge</button>
       <input type="file" id="billedInput" accept="image/*,application/pdf" hidden>
@@ -604,35 +608,41 @@ function selectedType(){ const s = document.querySelector('#typeChips .chip.sel'
 
 $('photoBtn').addEventListener('click',()=>$('photoInput').click());
 $('galleryBtn').addEventListener('click',()=>$('photoInputGallery').click());
-async function handleFile(e){
-  const f = e.target.files[0]; if(!f) return;
+function showPhotoUI(){
+  $('photoPreview').style.display='block';
+  $('photoBtn').style.display='none';
+  $('galleryBtn').style.display='none';
+  $('photoDropHint').style.display='none';
+  $('aiBtn').style.display='block';
+  $('aiHintWrap').style.display='block';
+}
+function hidePhotoUI(){
+  $('photoPreview').style.display='none';
+  $('photoBtn').style.display='block';
+  $('galleryBtn').style.display='block';
+  $('photoDropHint').style.display='block';
+  $('aiBtn').style.display='none';
+  $('aiHintWrap').style.display='none';
+}
+async function setMainPhotoFromFile(f){
   try{
-    if(f.type==='application/pdf'){
-      toast('Converting PDF…');
-      currentPhoto = await pdfToImage(f);
-    } else {
-      currentPhoto = await downscale(f, true);
-    }
+    currentPhoto = await fileToImageDataURL(f, true);
     $('previewImg').src = currentPhoto;
-    $('photoPreview').style.display='block';
-    $('photoBtn').style.display='none';
-    $('galleryBtn').style.display='none';
-    $('aiBtn').style.display='block';
-    $('aiHintWrap').style.display='block';
+    showPhotoUI();
   }catch(err){
     toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image");
   }
+}
+async function handleFile(e){
+  const f = e.target.files[0]; if(!f) return;
+  await setMainPhotoFromFile(f);
   e.target.value='';
 }
 $('photoInput').addEventListener('change',handleFile);
 $('photoInputGallery').addEventListener('change',handleFile);
 $('retakeBtn').addEventListener('click',()=>{
   currentPhoto=null;
-  $('photoPreview').style.display='none';
-  $('photoBtn').style.display='block';
-  $('galleryBtn').style.display='block';
-  $('aiBtn').style.display='none';
-  $('aiHintWrap').style.display='none';
+  hidePhotoUI();
   $('fAiHint').value='';
 });
 $('rotateBtn').addEventListener('click',async ()=>{
@@ -660,6 +670,20 @@ function renderBilledRows(){
     + '<button type="button" class="linkbtn billedRowRemove" style="color:var(--rust);margin-top:6px;padding-left:0">✕ Remove this charge</button>'
     + '</div>'
   ).join('');
+}
+async function fileToImageDataURL(f, doCrop){
+  if(f.type==='application/pdf'){
+    toast('Converting PDF…');
+    return await pdfToImage(f);
+  }
+  return await downscale(f, doCrop);
+}
+async function setBilledImageFromFile(idx, f){
+  if(currentBilled[idx]==null) return;
+  try{
+    currentBilled[idx].image = await fileToImageDataURL(f, false);
+    renderBilledRows();
+  }catch(err){ toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image"); }
 }
 let billedFileTargetIdx = null;
 $('billedAddBtn').addEventListener('click',()=>{
@@ -690,18 +714,50 @@ $('billedRows').addEventListener('click',e=>{
 });
 $('billedInput').addEventListener('change',async e=>{
   const f = e.target.files[0]; if(!f) return;
-  const idx = billedFileTargetIdx;
-  try{
-    let img;
-    if(f.type==='application/pdf'){
-      toast('Converting PDF…');
-      img = await pdfToImage(f);
-    } else {
-      img = await downscale(f, false);
-    }
-    if(idx!=null && currentBilled[idx]){ currentBilled[idx].image = img; renderBilledRows(); }
-  }catch(err){ toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image"); }
+  if(billedFileTargetIdx!=null) await setBilledImageFromFile(billedFileTargetIdx, f);
   e.target.value='';
+});
+
+/* ============ paste & drag-drop for receipt/statement images ============ */
+function clipboardImageFile(dt){
+  const items = (dt && dt.items) || [];
+  for(const it of items){
+    if(it.kind==='file' && (it.type.startsWith('image/') || it.type==='application/pdf')) return it.getAsFile();
+  }
+  return null;
+}
+document.addEventListener('paste', async e=>{
+  if(!$('tab-add').classList.contains('active')) return;
+  const f = clipboardImageFile(e.clipboardData);
+  if(!f) return;
+  e.preventDefault();
+  const active = document.activeElement;
+  const row = active && active.closest && active.closest('.billed-row');
+  if(row) await setBilledImageFromFile(+row.dataset.idx, f);
+  else await setMainPhotoFromFile(f);
+});
+function setupDropZone(el, onDrop){
+  el.addEventListener('dragover', e=>{
+    if(!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+    e.preventDefault();
+    el.classList.add('drop-active');
+  });
+  el.addEventListener('dragleave', ()=> el.classList.remove('drop-active'));
+  el.addEventListener('drop', e=>{
+    if(!e.dataTransfer || !e.dataTransfer.files.length) return;
+    e.preventDefault();
+    el.classList.remove('drop-active');
+    onDrop(e.dataTransfer.files[0], e);
+  });
+}
+setupDropZone($('photoDropZone'), f=>setMainPhotoFromFile(f));
+setupDropZone($('billedPanel'), (f,e)=>{
+  const row = e.target.closest('.billed-row');
+  if(row){ setBilledImageFromFile(+row.dataset.idx, f); return; }
+  currentBilled.push({amount:null, image:null});
+  const idx = currentBilled.length-1;
+  renderBilledRows();
+  setBilledImageFromFile(idx, f);
 });
 
 /* ============ AI auto-fill ============ */
@@ -779,11 +835,7 @@ $('fReimb').addEventListener('change',()=>{
 
 function resetForm(){
   editingId=null; currentPhoto=null;
-  $('photoPreview').style.display='none';
-  $('photoBtn').style.display='block';
-  $('galleryBtn').style.display='block';
-  $('aiBtn').style.display='none';
-  $('aiHintWrap').style.display='none';
+  hidePhotoUI();
   $('fDate').value=todayISO();
   ['fAmount','fVendor','fTrip','fEmployer','fNotes','fAiHint'].forEach(id=>$(id).value='');
   currentBilled=[];
@@ -1121,8 +1173,8 @@ $('editBtn').addEventListener('click',()=>{
   closeSheet();
   editingId = r.id;
   currentPhoto = r.image || null;
-  if(currentPhoto){ $('previewImg').src=currentPhoto; $('photoPreview').style.display='block'; $('photoBtn').style.display='none'; $('galleryBtn').style.display='none'; $('aiBtn').style.display='block'; $('aiHintWrap').style.display='block'; }
-  else { $('photoPreview').style.display='none'; $('photoBtn').style.display='block'; $('galleryBtn').style.display='block'; $('aiBtn').style.display='none'; $('aiHintWrap').style.display='none'; }
+  if(currentPhoto){ $('previewImg').src=currentPhoto; showPhotoUI(); }
+  else { hidePhotoUI(); }
   $('fDate').value=r.date; $('fAmount').value=r.amount; $('fCurrency').value=r.currency;
   $('fVendor').value=r.vendor; $('fTrip').value=r.trip; $('fEmployer').value=r.employer; $('fNotes').value=r.notes;
   $('fReimb').checked = !!r.reimbursed;

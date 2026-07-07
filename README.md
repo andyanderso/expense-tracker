@@ -69,7 +69,7 @@ When a receipt is in a local currency (CAD, CLP, etc.) but your card was charged
 
 ### Adding a receipt
 1. Open the **＋ Add** tab.
-2. Tap **Snap receipt photo** (camera) or **…or choose a photo / PDF** (gallery, email attachments, e-tickets). PDFs are converted to images automatically (first 3 pages).
+2. Tap **Snap receipt photo** (camera) or **…or choose a photo / PDF** (gallery, email attachments, e-tickets). PDFs are converted to images automatically (first 3 pages). On desktop you can also **paste (Ctrl+V)** or **drag and drop** an image straight onto the receipt area — same for each card charge's statement screenshot.
 3. Optional: tap **✨ Auto-fill from receipt** to have AI read the photo and fill in the vendor, date, amount, currency, and expense type. Always double-check the amount.
 4. Fill in **Trip** and **Employer / client** — these fields remember and suggest everything you've typed before.
 5. Pick an expense type chip and hit **Save receipt**.
