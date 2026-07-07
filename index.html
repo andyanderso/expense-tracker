@@ -217,15 +217,10 @@ textarea{resize:vertical;min-height:60px}
     </div>
     <div class="field"><label for="fTrip">Trip</label><input type="text" id="fTrip" placeholder="e.g. Tantalus Heli Trip" list="dlTrip"><datalist id="dlTrip"></datalist></div>
     <div class="panel" style="padding:12px 14px">
-      <h3 style="font-size:15px;margin-bottom:8px">Card charge — reconcile USD (optional)</h3>
-      <div class="row2" style="margin-bottom:0">
-        <div class="field" style="margin-bottom:0"><label for="fBilled">Charged (USD)</label><input type="number" id="fBilled" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
-        <div class="field" style="margin-bottom:0"><label id="billedLabel">Statement shot</label><button type="button" class="btn-ghost btn" id="billedBtn" style="padding:9px;margin:0">Add screenshot</button></div>
-      </div>
-      <div class="photo-preview" id="billedPreview" style="display:none;margin:12px 0 0">
-        <img id="billedImg" alt="Card statement screenshot">
-        <button id="billedRemove">Remove</button>
-      </div>
+      <h3 style="font-size:15px;margin-bottom:8px">Card charges — reconcile USD (optional)</h3>
+      <p class="hint" style="margin-top:0">Add one row per separate card charge for this receipt — e.g. lodging and parking on one invoice, billed separately.</p>
+      <div id="billedRows"></div>
+      <button type="button" class="btn-ghost btn" id="billedAddBtn" style="margin-top:4px">+ Add card charge</button>
       <input type="file" id="billedInput" accept="image/*,application/pdf" hidden>
     </div>
     <div class="field"><label for="fEmployer">Employer / client</label><input type="text" id="fEmployer" placeholder="Who reimburses this" list="dlEmployer"><datalist id="dlEmployer"></datalist></div>
@@ -375,7 +370,7 @@ const TYPES = ['Lodging','Meals','Transportation','Fuel','Airfare','Gear','Fees'
 let receipts = [];          // in-memory mirror (includes tombstones)
 let db = null;              // IndexedDB handle (null => memory-only)
 let currentPhoto = null;    // dataURL for the add form
-let currentBilledImage = null; // dataURL of card statement screenshot
+let currentBilled = [];     // [{amount, image}] card charges for the add form
 let editingId = null;       // if set, save updates instead of creating
 let openReceiptId = null;
 let settings = { gclient:'', gkey:'', akey:'', gfolder:'' };
@@ -648,27 +643,65 @@ $('rotateBtn').addEventListener('click',async ()=>{
   }catch(e){ toast("Couldn't rotate that image"); }
 });
 
-/* ============ card statement screenshot ============ */
-$('billedBtn').addEventListener('click',()=>$('billedInput').click());
+/* ============ card statement screenshots (one or more per receipt) ============ */
+function renderBilledRows(){
+  const host = $('billedRows');
+  if(!currentBilled.length){
+    host.innerHTML = '<p class="hint" style="margin:0">No card charges added yet.</p>';
+    return;
+  }
+  host.innerHTML = currentBilled.map((b,i)=>
+    '<div class="billed-row" data-idx="'+i+'" style="border-top:1.5px solid var(--line);padding-top:12px;margin-top:12px">'
+    + '<div class="row2" style="margin-bottom:0">'
+    + '<div class="field" style="margin-bottom:0"><label>Charged (USD)</label><input type="number" class="billedAmt" inputmode="decimal" step="0.01" min="0" placeholder="0.00" value="'+(b.amount!=null?b.amount:'')+'"></div>'
+    + '<div class="field" style="margin-bottom:0"><label>Statement shot</label><button type="button" class="btn-ghost btn billedShotBtn" style="padding:9px;margin:0">'+(b.image?'Replace screenshot':'Add screenshot')+'</button></div>'
+    + '</div>'
+    + (b.image ? '<div class="photo-preview" style="margin:10px 0 0"><img src="'+b.image+'" alt="Card statement screenshot"><button type="button" class="billedImgRemove">Remove image</button></div>' : '')
+    + '<button type="button" class="linkbtn billedRowRemove" style="color:var(--rust);margin-top:6px;padding-left:0">✕ Remove this charge</button>'
+    + '</div>'
+  ).join('');
+}
+let billedFileTargetIdx = null;
+$('billedAddBtn').addEventListener('click',()=>{
+  currentBilled.push({amount:null, image:null});
+  renderBilledRows();
+  const rows = $('billedRows').querySelectorAll('.billedAmt');
+  if(rows.length) rows[rows.length-1].focus();
+});
+$('billedRows').addEventListener('input',e=>{
+  if(!e.target.classList.contains('billedAmt')) return;
+  const idx = +e.target.closest('.billed-row').dataset.idx;
+  const v = parseFloat(e.target.value);
+  currentBilled[idx].amount = isNaN(v) ? null : v;
+});
+$('billedRows').addEventListener('click',e=>{
+  const row = e.target.closest('.billed-row'); if(!row) return;
+  const idx = +row.dataset.idx;
+  if(e.target.classList.contains('billedShotBtn')){
+    billedFileTargetIdx = idx;
+    $('billedInput').click();
+  } else if(e.target.classList.contains('billedImgRemove')){
+    currentBilled[idx].image = null;
+    renderBilledRows();
+  } else if(e.target.classList.contains('billedRowRemove')){
+    currentBilled.splice(idx,1);
+    renderBilledRows();
+  }
+});
 $('billedInput').addEventListener('change',async e=>{
   const f = e.target.files[0]; if(!f) return;
+  const idx = billedFileTargetIdx;
   try{
+    let img;
     if(f.type==='application/pdf'){
       toast('Converting PDF…');
-      currentBilledImage = await pdfToImage(f);
+      img = await pdfToImage(f);
     } else {
-      currentBilledImage = await downscale(f, false);
+      img = await downscale(f, false);
     }
-    $('billedImg').src = currentBilledImage;
-    $('billedPreview').style.display='block';
-    $('billedBtn').textContent='Replace screenshot';
+    if(idx!=null && currentBilled[idx]){ currentBilled[idx].image = img; renderBilledRows(); }
   }catch(err){ toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image"); }
   e.target.value='';
-});
-$('billedRemove').addEventListener('click',()=>{
-  currentBilledImage=null;
-  $('billedPreview').style.display='none';
-  $('billedBtn').textContent='Add screenshot';
 });
 
 /* ============ AI auto-fill ============ */
@@ -752,10 +785,9 @@ function resetForm(){
   $('aiBtn').style.display='none';
   $('aiHintWrap').style.display='none';
   $('fDate').value=todayISO();
-  ['fAmount','fVendor','fTrip','fEmployer','fNotes','fBilled','fAiHint'].forEach(id=>$(id).value='');
-  currentBilledImage=null;
-  $('billedPreview').style.display='none';
-  $('billedBtn').textContent='Add screenshot';
+  ['fAmount','fVendor','fTrip','fEmployer','fNotes','fAiHint'].forEach(id=>$(id).value='');
+  currentBilled=[];
+  renderBilledRows();
   $('fReimb').checked=false;
   $('fReimbDate').value='';
   $('fReimbDateWrap').style.display='none';
@@ -768,14 +800,12 @@ $('saveBtn').addEventListener('click',async ()=>{
   const amount = parseFloat($('fAmount').value);
   if(!$('fDate').value){ toast('Add a date'); return; }
   if(isNaN(amount)){ toast('Add an amount'); return; }
-  const billed = parseFloat($('fBilled').value);
   const r = {
     id: editingId || (Date.now().toString(36)+Math.random().toString(36).slice(2,7)),
     date: $('fDate').value,
     amount: amount,
     currency: $('fCurrency').value,
-    billedAmount: isNaN(billed) ? null : billed,
-    billedImage: currentBilledImage,
+    billedItems: currentBilled.filter(b=>b.amount!=null && !isNaN(b.amount)),
     vendor: $('fVendor').value.trim(),
     trip: $('fTrip').value.trim(),
     employer: $('fEmployer').value.trim(),
@@ -840,11 +870,24 @@ function applyFilters(list, trip, employer, type, from, to, status){
   ).sort((a,b)=> a.date===b.date ? a.createdAt-b.createdAt : (a.date<b.date?-1:1));
 }
 
+/* ============ card charges (billing reconciliation) ============ */
+// A receipt's card charges: current shape is billedItems:[{amount,image}]; older
+// receipts saved before multi-charge support have a single billedAmount/billedImage.
+function billedItems(r){
+  if(Array.isArray(r.billedItems)) return r.billedItems;
+  if(r.billedAmount!=null || r.billedImage) return [{amount:r.billedAmount, image:r.billedImage||null}];
+  return [];
+}
+function billedTotal(r){
+  return billedItems(r).reduce((s,b)=> s + (b.amount!=null?b.amount:0), 0);
+}
+
 /* ============ totals ============ */
 function totalsByCurrency(list){
   const t={};
   list.forEach(r=>{
-    if(r.billedAmount != null){ t['USD']=(t['USD']||0)+r.billedAmount; }
+    const bi = billedItems(r);
+    if(bi.length){ t['USD']=(t['USD']||0)+billedTotal(r); }
     else { t[r.currency]=(t[r.currency]||0)+r.amount; }
   });
   return t;
@@ -886,7 +929,7 @@ function slipHTML(r){
     + '</span>'
     + '</span>'
     + '<span class="amt">'+fmt(r.amount,r.currency)
-    + (r.billedAmount!=null && r.currency!=='USD' ? '<small>'+fmt(r.billedAmount,'USD')+' card</small>' : '')
+    + (billedItems(r).length && r.currency!=='USD' ? '<small>'+fmt(billedTotal(r),'USD')+' card</small>' : '')
     + '</span>'
     + '</button><div class="slip-tear"></div></div>';
 }
@@ -1012,21 +1055,25 @@ function renderHistory(){
 function openSheet(id){
   const r = receipts.find(x=>x.id===id); if(!r) return;
   openReceiptId = id;
+  const bi = billedItems(r);
+  const bTotal = billedTotal(r);
   $('sheetBody').innerHTML =
     (r.image?'<img src="'+r.image+'" alt="Receipt photo">':'')
     + '<h2>'+esc(r.vendor||'(no vendor)')+'</h2>'
     + '<div class="big-amt">'+fmt(r.amount,r.currency)
-    + (r.billedAmount!=null?' <span style="font-size:14px;color:var(--ink-soft)">· '+fmt(r.billedAmount,'USD')+' on card</span>':'')
+    + (bi.length?' <span style="font-size:14px;color:var(--ink-soft)">· '+fmt(bTotal,'USD')+' on card</span>':'')
     + '</div>'
     + '<dl class="kv">'
     + '<dt>Date</dt><dd>'+esc(r.date)+'</dd>'
     + '<dt>Type</dt><dd>'+esc(r.type)+'</dd>'
-    + (r.billedAmount!=null?'<dt>Card (USD)</dt><dd>'+fmt(r.billedAmount,'USD')+'</dd>':'')
+    + (bi.length?'<dt>Card (USD)</dt><dd>'+fmt(bTotal,'USD')+(bi.length>1?' ('+bi.length+' charges)':'')+'</dd>':'')
     + (r.trip?'<dt>Trip</dt><dd>'+esc(r.trip)+'</dd>':'')
     + (r.employer?'<dt>Employer</dt><dd>'+esc(r.employer)+'</dd>':'')
     + (r.notes?'<dt>Notes</dt><dd>'+esc(r.notes)+'</dd>':'')
     + '</dl>'
-    + (r.billedImage?'<p style="font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px">Card statement</p><img src="'+r.billedImage+'" alt="Card statement screenshot">':'');
+    + bi.filter(b=>b.image).map(b=>
+        '<p style="font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px">Card statement'+(bi.length>1?' — '+fmt(b.amount||0,'USD'):'')+'</p><img src="'+b.image+'" alt="Card statement screenshot">'
+      ).join('');
   const st = $('reimbStatus'), dt = $('reimbDate'), btn = $('reimbBtn');
   if(r.reimbursed){
     st.className='rstat done'; st.textContent='✓ Reimbursed '+(r.reimbursedDate||'');
@@ -1059,7 +1106,11 @@ $('deleteBtn').addEventListener('click',async ()=>{
   if(!openReceiptId) return;
   if(!confirm('Delete this receipt? This can\'t be undone.')) return;
   const r = receipts.find(x=>x.id===openReceiptId);
-  if(r){ r.deleted = true; r.image = null; r.billedImage = null; r.updatedAt = Date.now(); await putReceipt(r); }
+  if(r){
+    r.deleted = true; r.image = null; r.billedImage = null;
+    if(Array.isArray(r.billedItems)) r.billedItems = r.billedItems.map(b=>({amount:b.amount, image:null}));
+    r.updatedAt = Date.now(); await putReceipt(r);
+  }
   closeSheet(); renderList(); refreshFilters(); updateHeader(); renderHistory();
   toast('Receipt deleted');
   scheduleAutoSync();
@@ -1074,13 +1125,11 @@ $('editBtn').addEventListener('click',()=>{
   else { $('photoPreview').style.display='none'; $('photoBtn').style.display='block'; $('galleryBtn').style.display='block'; $('aiBtn').style.display='none'; $('aiHintWrap').style.display='none'; }
   $('fDate').value=r.date; $('fAmount').value=r.amount; $('fCurrency').value=r.currency;
   $('fVendor').value=r.vendor; $('fTrip').value=r.trip; $('fEmployer').value=r.employer; $('fNotes').value=r.notes;
-  $('fBilled').value = r.billedAmount!=null ? r.billedAmount : '';
   $('fReimb').checked = !!r.reimbursed;
   $('fReimbDate').value = r.reimbursedDate || '';
   $('fReimbDateWrap').style.display = r.reimbursed ? 'block' : 'none';
-  currentBilledImage = r.billedImage || null;
-  if(currentBilledImage){ $('billedImg').src=currentBilledImage; $('billedPreview').style.display='block'; $('billedBtn').textContent='Replace screenshot'; }
-  else { $('billedPreview').style.display='none'; $('billedBtn').textContent='Add screenshot'; }
+  currentBilled = billedItems(r).map(b=>({amount:b.amount, image:b.image}));
+  renderBilledRows();
   buildChips(r.type);
   $('saveBtn').textContent='Update receipt';
   document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));
@@ -1137,7 +1186,7 @@ function reportHTML(forWord){
   h += '<tr style="font-weight:bold;background:#eee"><td>Total</td><td>'+list.length+'</td><td>'+totalsString(list)+'</td></tr></table>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Itemized expenses</h2>';
-  const hasBilled = list.some(r=>r.billedAmount!=null);
+  const hasBilled = list.some(r=>billedItems(r).length);
   const cols = hasBilled
     ? [['#','4%'],['Date','9%'],['Vendor','19%'],['Type','10%'],['Trip','10%'],['Receipt amount','11%'],['Card charge (USD)','12%'],['Reimbursed','9%'],['Notes','16%']]
     : [['#','4%'],['Date','10%'],['Vendor','22%'],['Type','11%'],['Trip','11%'],['Receipt amount','13%'],['Reimbursed','10%'],['Notes','19%']];
@@ -1145,22 +1194,24 @@ function reportHTML(forWord){
   h += '<colgroup>'+cols.map(c=>'<col width="'+c[1]+'">').join('')+'</colgroup>';
   h += '<tr style="background:#F2C744">'+cols.map(c=>'<th align="left" style="width:'+c[1]+'">'+c[0]+'</th>').join('')+'</tr>';
   list.forEach((r,i)=>{
+    const bi = billedItems(r);
     h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td>'
-      + (hasBilled ? '<td>'+(r.billedAmount!=null?fmt(r.billedAmount,'USD'):'—')+'</td>' : '')
+      + (hasBilled ? '<td>'+(bi.length?fmt(billedTotal(r),'USD')+(bi.length>1?' ('+bi.length+')':''):'—')+'</td>' : '')
       + '<td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
   });
   h += '</table>';
-  if(hasBilled) h += '<p style="font-family:Arial,sans-serif;font-size:9pt;color:#666">Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction and is used in the totals above; card statement images are attached alongside the corresponding receipts below.</p>';
+  if(hasBilled) h += '<p style="font-family:Arial,sans-serif;font-size:9pt;color:#666">Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction (summed across all card charges tied to that receipt) and is used in the totals above; card statement images are attached alongside the corresponding receipts below.</p>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
   list.forEach((r,i)=>{
-    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt;page-break-after:avoid'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'')+'</p>';
+    const bi = billedItems(r);
+    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt;page-break-after:avoid'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(bi.length?' ('+fmt(billedTotal(r),'USD')+' charged to card)':'')+'</p>';
     if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
     else h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#888">(no photo attached)</p>';
-    if(r.billedImage){
-      h += '<p style="font-family:Arial,sans-serif;font-size:10pt;margin:6pt 0 4pt;page-break-after:avoid"><b>Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':</b></p>';
-      h += '<img src="'+r.billedImage+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
-    }
+    bi.filter(b=>b.image).forEach(b=>{
+      h += '<p style="font-family:Arial,sans-serif;font-size:10pt;margin:6pt 0 4pt;page-break-after:avoid"><b>Card statement — '+fmt(b.amount!=null?b.amount:0,'USD')+':</b></p>';
+      h += '<img src="'+b.image+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
+    });
   });
   return h;
 }

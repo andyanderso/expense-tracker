@@ -62,10 +62,10 @@ Once installed, the app opens instantly and works with no signal — receipts yo
 ## 3. Daily use
 
 ### Foreign-currency receipts & card reconciliation
-When a receipt is in a local currency (CAD, CLP, etc.) but your card was charged in USD, use the **Card charge — reconcile USD** section on the Add form: enter the USD amount from your card statement and attach a screenshot of the charge. The app then:
-- shows both amounts on the receipt (local on top, "$xx.xx card" underneath)
-- uses the **USD card amount in all totals and report summaries** (that's the real reimbursable number), falling back to the receipt currency when no card charge is entered
-- pairs the statement screenshot with the receipt photo in the exported report, so the reviewer sees the receipt and the proof of the exact USD charge side by side
+When a receipt is in a local currency (CAD, CLP, etc.) but your card was charged in USD, use the **Card charges — reconcile USD** section on the Add form: for each separate card charge tied to that receipt, tap **+ Add card charge** and enter the USD amount plus (optionally) a screenshot of that line on your statement. This supports invoices billed as multiple separate charges — e.g. a hotel invoice where lodging and parking hit the card separately — so the sum of the card charges can be reconciled against the one receipt total. The app then:
+- shows the combined USD total on the receipt (local amount on top, "$xx.xx card" underneath)
+- uses the **sum of the USD card charges in all totals and report summaries** (that's the real reimbursable number), falling back to the receipt currency when no card charge is entered
+- pairs each statement screenshot with the receipt photo in the exported report, labeled with its own amount, so the reviewer sees the receipt and the proof of every USD charge side by side
 
 ### Adding a receipt
 1. Open the **＋ Add** tab.
