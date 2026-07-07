@@ -202,6 +202,7 @@ textarea{resize:vertical;min-height:60px}
       <button id="rotateBtn" style="right:auto;left:8px">↻ Rotate</button>
     </div>
     <button class="btn-ghost btn" id="galleryBtn" style="margin-bottom:14px">…or choose a photo / PDF</button>
+    <div class="field" id="aiHintWrap" style="display:none"><label for="fAiHint">Note for AI (optional, this receipt only)</label><input type="text" id="fAiHint" placeholder="e.g. &quot;tip is included in the total&quot;"></div>
     <button class="btn btn-dark" id="aiBtn" style="display:none;margin-bottom:14px">✨ Auto-fill from receipt</button>
 
     <div class="row2">
@@ -225,7 +226,7 @@ textarea{resize:vertical;min-height:60px}
         <img id="billedImg" alt="Card statement screenshot">
         <button id="billedRemove">Remove</button>
       </div>
-      <input type="file" id="billedInput" accept="image/*" hidden>
+      <input type="file" id="billedInput" accept="image/*,application/pdf" hidden>
     </div>
     <div class="field"><label for="fEmployer">Employer / client</label><input type="text" id="fEmployer" placeholder="Who reimburses this" list="dlEmployer"><datalist id="dlEmployer"></datalist></div>
     <div class="field"><label id="typeLabel">Expense type</label>
@@ -621,6 +622,7 @@ async function handleFile(e){
     $('photoBtn').style.display='none';
     $('galleryBtn').style.display='none';
     $('aiBtn').style.display='block';
+    $('aiHintWrap').style.display='block';
   }catch(err){
     toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image");
   }
@@ -634,6 +636,8 @@ $('retakeBtn').addEventListener('click',()=>{
   $('photoBtn').style.display='block';
   $('galleryBtn').style.display='block';
   $('aiBtn').style.display='none';
+  $('aiHintWrap').style.display='none';
+  $('fAiHint').value='';
 });
 $('rotateBtn').addEventListener('click',async ()=>{
   if(!currentPhoto) return;
@@ -648,11 +652,16 @@ $('billedBtn').addEventListener('click',()=>$('billedInput').click());
 $('billedInput').addEventListener('change',async e=>{
   const f = e.target.files[0]; if(!f) return;
   try{
-    currentBilledImage = await downscale(f, false);
+    if(f.type==='application/pdf'){
+      toast('Converting PDF…');
+      currentBilledImage = await pdfToImage(f);
+    } else {
+      currentBilledImage = await downscale(f, false);
+    }
     $('billedImg').src = currentBilledImage;
     $('billedPreview').style.display='block';
     $('billedBtn').textContent='Replace screenshot';
-  }catch(err){ toast("Couldn't read that image"); }
+  }catch(err){ toast(f.type==='application/pdf' ? "Couldn't convert that PDF (are you online?)" : "Couldn't read that image"); }
   e.target.value='';
 });
 $('billedRemove').addEventListener('click',()=>{
@@ -664,12 +673,12 @@ $('billedRemove').addEventListener('click',()=>{
 /* ============ AI auto-fill ============ */
 const EXTRACT_PROMPT = 'This image is a receipt or invoice. Extract its details and respond with ONLY a raw JSON object, no markdown fences, no commentary: {"vendor": string, "date": "YYYY-MM-DD", "amount": number (the grand total paid), "currency": 3-letter code like "USD", "type": one of '+JSON.stringify(TYPES)+', "notes": very short string or ""}. Use null for anything unreadable.';
 
-async function extractWithGemini(b64){
+async function extractWithGemini(b64, prompt){
   const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(settings.gkey),{
     method:'POST', headers:{'content-type':'application/json'},
     body: JSON.stringify({contents:[{parts:[
       {inline_data:{mime_type:'image/jpeg',data:b64}},
-      {text:EXTRACT_PROMPT}
+      {text:prompt}
     ]}]})
   });
   if(!resp.ok) throw new Error('HTTP '+resp.status);
@@ -677,7 +686,7 @@ async function extractWithGemini(b64){
   return ((data.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||'').join('');
 }
 
-async function extractWithClaude(b64){
+async function extractWithClaude(b64, prompt){
   const headers = {'content-type':'application/json'};
   if(settings.akey){
     headers['x-api-key'] = settings.akey;
@@ -691,7 +700,7 @@ async function extractWithClaude(b64){
       max_tokens:1000,
       messages:[{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-        {type:'text',text:EXTRACT_PROMPT}
+        {type:'text',text:prompt}
       ]}]
     })
   });
@@ -706,7 +715,9 @@ $('aiBtn').addEventListener('click', async ()=>{
   btn.disabled = true; btn.textContent = 'Reading receipt…';
   try{
     const b64 = currentPhoto.split(',')[1];
-    const raw = settings.gkey ? await extractWithGemini(b64) : await extractWithClaude(b64);
+    const hint = $('fAiHint').value.trim();
+    const prompt = hint ? EXTRACT_PROMPT+' Note from the user about this specific receipt: '+hint : EXTRACT_PROMPT;
+    const raw = settings.gkey ? await extractWithGemini(b64, prompt) : await extractWithClaude(b64, prompt);
     const text = raw.replace(/```json|```/g,'').trim();
     const x = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}')+1));
     if(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date)) $('fDate').value = x.date;
@@ -738,8 +749,9 @@ function resetForm(){
   $('photoBtn').style.display='block';
   $('galleryBtn').style.display='block';
   $('aiBtn').style.display='none';
+  $('aiHintWrap').style.display='none';
   $('fDate').value=todayISO();
-  ['fAmount','fVendor','fTrip','fEmployer','fNotes','fBilled'].forEach(id=>$(id).value='');
+  ['fAmount','fVendor','fTrip','fEmployer','fNotes','fBilled','fAiHint'].forEach(id=>$(id).value='');
   currentBilledImage=null;
   $('billedPreview').style.display='none';
   $('billedBtn').textContent='Add screenshot';
@@ -1057,8 +1069,8 @@ $('editBtn').addEventListener('click',()=>{
   closeSheet();
   editingId = r.id;
   currentPhoto = r.image || null;
-  if(currentPhoto){ $('previewImg').src=currentPhoto; $('photoPreview').style.display='block'; $('photoBtn').style.display='none'; $('galleryBtn').style.display='none'; $('aiBtn').style.display='block'; }
-  else { $('photoPreview').style.display='none'; $('photoBtn').style.display='block'; $('galleryBtn').style.display='block'; $('aiBtn').style.display='none'; }
+  if(currentPhoto){ $('previewImg').src=currentPhoto; $('photoPreview').style.display='block'; $('photoBtn').style.display='none'; $('galleryBtn').style.display='none'; $('aiBtn').style.display='block'; $('aiHintWrap').style.display='block'; }
+  else { $('photoPreview').style.display='none'; $('photoBtn').style.display='block'; $('galleryBtn').style.display='block'; $('aiBtn').style.display='none'; $('aiHintWrap').style.display='none'; }
   $('fDate').value=r.date; $('fAmount').value=r.amount; $('fCurrency').value=r.currency;
   $('fVendor').value=r.vendor; $('fTrip').value=r.trip; $('fEmployer').value=r.employer; $('fNotes').value=r.notes;
   $('fBilled').value = r.billedAmount!=null ? r.billedAmount : '';
