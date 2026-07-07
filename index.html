@@ -323,6 +323,7 @@ textarea{resize:vertical;min-height:60px}
       <button class="btn-ghost btn" id="restoreBtn">Restore</button>
       <input type="file" id="restoreInput" accept="application/json" hidden>
     </div>
+    <p class="hint" id="appVersion" style="text-align:center"></p>
   </section>
 </main>
 
@@ -1531,6 +1532,10 @@ function updateSyncBanner(){
   if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')){
     navigator.serviceWorker.register('sw.js').catch(()=>{});
   }
+  fetch('sw.js').then(r=>r.text()).then(t=>{
+    const m = t.match(/CACHE\s*=\s*'([^']+)'/);
+    if(m) $('appVersion').textContent = 'Version: '+m[1];
+  }).catch(()=>{});
   resetForm();
   refreshDatalists(); refreshFilters(); updateHeader(); renderReportSummary();
 })();
