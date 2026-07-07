@@ -1323,19 +1323,17 @@ async function buildReportDocx(){
   for(let i=0;i<list.length;i++){
     const r = list[i];
     const caption = 'Receipt '+(i+1)+': '+r.date+' · '+(r.vendor||'')+' · '+r.type+' · '+fmt(r.amount,r.currency)+(r.billedAmount!=null?' ('+fmt(r.billedAmount,'USD')+' charged to card)':'');
-    // keepNext ties each caption to the paragraph right after it (its image, or the
-    // "no photo attached" note) so Word/Docs pagination can't strand the label alone
-    children.push(new docx.Paragraph({children:[new docx.TextRun({text:caption, bold:true, size:21})], pageBreakBefore: i>0, keepNext:true, spacing:{after:60}}));
+    children.push(new docx.Paragraph({children:[new docx.TextRun({text:caption, bold:true, size:21})], pageBreakBefore: i>0, spacing:{after:60}}));
     if(r.image){
       const run = await buildImageRun(docx, r.image);
-      if(run) children.push(new docx.Paragraph({children:[run], keepLines:true}));
+      if(run) children.push(new docx.Paragraph({children:[run]}));
     } else {
       children.push(new docx.Paragraph({children:[new docx.TextRun({text:'(no photo attached)', italics:true, size:20, color:'888888'})]}));
     }
     if(r.billedImage){
-      children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':', bold:true, size:20})], keepNext:true, spacing:{before:80,after:40}}));
+      children.push(new docx.Paragraph({children:[new docx.TextRun({text:'Card statement — '+fmt(r.billedAmount!=null?r.billedAmount:0,'USD')+':', bold:true, size:20})], spacing:{before:80,after:40}}));
       const brun = await buildImageRun(docx, r.billedImage);
-      if(brun) children.push(new docx.Paragraph({children:[brun], keepLines:true}));
+      if(brun) children.push(new docx.Paragraph({children:[brun]}));
     }
   }
 
