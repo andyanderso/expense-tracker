@@ -168,7 +168,7 @@ textarea{resize:vertical;min-height:60px}
 .settings-row .btn-ghost{flex:1}
 .banner{background:#FCEFC7;border:1.5px solid var(--canary-deep);border-radius:var(--radius);padding:10px 12px;font-size:13.5px;margin-bottom:14px;display:none}
 .banner.show{display:block}
-.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;z-index:120;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;z-index:120;opacity:0;pointer-events:none;transition:opacity .2s;width:max-content;max-width:calc(100vw - 32px);text-align:center}
 .toast.show{opacity:1}
 </style>
 </head>
@@ -266,7 +266,7 @@ textarea{resize:vertical;min-height:60px}
         <option value="none">Group: none</option>
       </select>
     </div>
-    <div class="count-row"><div class="count-line" id="countLine" style="margin:0"></div><button class="linkbtn" id="selectModeBtn">Select</button></div>
+    <div class="count-row"><div class="count-line" id="countLine" style="margin:0"></div><button class="linkbtn" id="renameTripBtn" style="display:none">Rename trip</button><button class="linkbtn" id="selectModeBtn">Select</button></div>
     <div id="receiptList"></div>
   </section>
 
@@ -574,9 +574,9 @@ async function pdfToImage(file){
 
 /* ============ toast ============ */
 let toastTimer;
-function toast(msg){
+function toast(msg, ms){
   const t = $('toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'),2200);
+  clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'),ms||2200);
 }
 
 /* ============ tabs ============ */
@@ -763,17 +763,34 @@ setupDropZone($('billedPanel'), (f,e)=>{
 /* ============ AI auto-fill ============ */
 const EXTRACT_PROMPT = 'This image is a receipt or invoice. Extract its details and respond with ONLY a raw JSON object, no markdown fences, no commentary: {"vendor": string, "date": "YYYY-MM-DD", "amount": number (the grand total paid), "currency": 3-letter code like "USD", "type": one of '+JSON.stringify(TYPES)+', "notes": very short string or ""}. Use null for anything unreadable.';
 
+// Google retires Gemini model versions on a rolling basis; try the auto-updating
+// alias first and fall through to pinned versions only when a model is gone (404).
+const GEMINI_MODELS = ['gemini-flash-latest','gemini-2.5-flash','gemini-2.0-flash'];
+async function apiError(resp){
+  let msg = '';
+  try{ const j = await resp.json(); msg = (j.error && (j.error.message || j.error.type)) || ''; }catch(e){}
+  const err = new Error('HTTP '+resp.status+(msg?': '+msg:''));
+  err.status = resp.status;
+  return err;
+}
 async function extractWithGemini(b64, prompt){
-  const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(settings.gkey),{
-    method:'POST', headers:{'content-type':'application/json'},
-    body: JSON.stringify({contents:[{parts:[
-      {inline_data:{mime_type:'image/jpeg',data:b64}},
-      {text:prompt}
-    ]}]})
-  });
-  if(!resp.ok) throw new Error('HTTP '+resp.status);
-  const data = await resp.json();
-  return ((data.candidates||[])[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+  let lastErr;
+  for(const model of GEMINI_MODELS){
+    const resp = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(settings.gkey),{
+      method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({contents:[{parts:[
+        {inline_data:{mime_type:'image/jpeg',data:b64}},
+        {text:prompt}
+      ]}]})
+    });
+    if(resp.ok){
+      const data = await resp.json();
+      return ((data.candidates||[])[0]?.content?.parts||[]).map(p=>p.thought?'':(p.text||'')).join('');
+    }
+    lastErr = await apiError(resp);
+    if(resp.status!==404) throw lastErr;
+  }
+  throw lastErr;
 }
 
 async function extractWithClaude(b64, prompt){
@@ -786,7 +803,7 @@ async function extractWithClaude(b64, prompt){
   const resp = await fetch('https://api.anthropic.com/v1/messages',{
     method:'POST', headers:headers,
     body: JSON.stringify({
-      model:'claude-sonnet-4-6',
+      model:'claude-sonnet-5',
       max_tokens:1000,
       messages:[{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
@@ -794,7 +811,7 @@ async function extractWithClaude(b64, prompt){
       ]}]
     })
   });
-  if(!resp.ok) throw new Error('HTTP '+resp.status);
+  if(!resp.ok) throw await apiError(resp);
   const data = await resp.json();
   return (data.content||[]).map(b=>b.text||'').join('');
 }
@@ -807,8 +824,18 @@ $('aiBtn').addEventListener('click', async ()=>{
     const b64 = currentPhoto.split(',')[1];
     const hint = $('fAiHint').value.trim();
     const prompt = hint ? EXTRACT_PROMPT+' Note from the user about this specific receipt: '+hint : EXTRACT_PROMPT;
-    const raw = settings.gkey ? await extractWithGemini(b64, prompt) : await extractWithClaude(b64, prompt);
+    if(!settings.gkey && !settings.akey) throw new Error('nokey');
+    let raw;
+    try{
+      raw = settings.gkey ? await extractWithGemini(b64, prompt) : await extractWithClaude(b64, prompt);
+    }catch(e){
+      // Gemini failed but a Claude key is also configured — try that before giving up.
+      if(!(settings.gkey && settings.akey)) throw e;
+      console.warn('Gemini auto-fill failed, trying Claude:', e);
+      raw = await extractWithClaude(b64, prompt);
+    }
     const text = raw.replace(/```json|```/g,'').trim();
+    if(text.indexOf('{')<0) throw new Error('No data found in the AI response');
     const x = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}')+1));
     if(x.date && /^\d{4}-\d{2}-\d{2}$/.test(x.date)) $('fDate').value = x.date;
     if(x.amount != null && !isNaN(x.amount)) $('fAmount').value = Number(x.amount).toFixed(2);
@@ -821,9 +848,11 @@ $('aiBtn').addEventListener('click', async ()=>{
     if(x.notes && !$('fNotes').value) $('fNotes').value = x.notes;
     toast('Fields filled — double-check the amount');
   }catch(err){
-    toast((settings.gkey || settings.akey)
-      ? 'Auto-fill failed — check your API key and connection'
-      : 'Auto-fill needs an API key — a free Gemini key works (Report → Sync & AI settings)');
+    console.error('Auto-fill failed:', err);
+    toast(err.message==='nokey'
+      ? 'Auto-fill needs an API key — a free Gemini key works (Report → Sync & AI settings)'
+      : !navigator.onLine ? 'Auto-fill needs a connection — you\'re offline'
+      : 'Auto-fill failed — '+err.message, 6000);
   }
   btn.disabled = false; btn.textContent = '✨ Auto-fill from receipt';
 });
@@ -959,6 +988,31 @@ function updateHeader(){
 /* ============ list rendering ============ */
 ['filtTrip','filtEmployer','filtType','filtStatus','filtGroup','filtFrom','filtTo'].forEach(id=>$(id).addEventListener('change',renderList));
 
+/* ============ rename trip ============ */
+// Trips are free-text strings on each receipt, so renaming rewrites every receipt
+// that carries the old name. Renaming onto an existing trip merges the two.
+$('renameTripBtn').addEventListener('click',async ()=>{
+  const oldName = $('filtTrip').value;
+  if(!oldName) return;
+  const input = prompt('Rename trip "'+oldName+'" to:', oldName);
+  if(input==null) return;
+  const newName = input.trim();
+  if(!newName){ toast('Trip name can\'t be empty'); return; }
+  if(newName===oldName) return;
+  const affected = live().filter(r=>r.trip===oldName);
+  if(distinct('trip').includes(newName) &&
+     !confirm('"'+newName+'" already exists — merge '+affected.length+' receipt'+(affected.length===1?'':'s')+' into it?')) return;
+  const reportHadTrip = $('rTrip').value===oldName;
+  const now = Date.now();
+  for(const r of affected){ r.trip = newName; r.updatedAt = now; await putReceipt(r); }
+  refreshDatalists(); refreshFilters();
+  $('filtTrip').value = newName;
+  if(reportHadTrip) $('rTrip').value = newName;
+  renderList(); renderReportSummary(); renderHistory();
+  toast(affected.length+' receipt'+(affected.length===1?'':'s')+' moved to "'+newName+'"');
+  if(affected.length) scheduleAutoSync();
+});
+
 function monthLabel(iso){
   const d = new Date(iso+'T12:00:00');
   return d.toLocaleString(undefined,{month:'long',year:'numeric'});
@@ -1030,6 +1084,7 @@ $('bulkYesBtn').addEventListener('click',()=>bulkApply(true));
 $('bulkNoBtn').addEventListener('click',()=>bulkApply(false));
 
 function renderList(){
+  $('renameTripBtn').style.display = $('filtTrip').value ? '' : 'none';
   const list = applyFilters(live(), $('filtTrip').value, $('filtEmployer').value, $('filtType').value, $('filtFrom').value, $('filtTo').value, $('filtStatus').value);
   const groupBy = $('filtGroup').value;
   const host = $('receiptList');

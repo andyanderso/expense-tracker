@@ -77,6 +77,8 @@ When a receipt is in a local currency (CAD, CLP, etc.) but your card was charged
 ### Browsing and grouping — Receipts tab
 Filter by trip, employer, expense type, reimbursement status, or date range. Group the list by trip, employer, month, or type. Every group shows its own running total. Tap any receipt to view it full size, edit it, or delete it.
 
+**Renaming a trip:** pick the trip in the trip filter, then tap **Rename trip**. Every receipt on that trip is updated (and synced). Renaming to a trip name that already exists merges the two trips, after a confirmation.
+
 ### Tracking reimbursements
 - Every receipt starts as **Pending** (orange badge).
 - **One receipt:** tap it → pick the date the money landed → **Mark reimbursed**. (The Edit form also has Reimbursed + date fields.) Green badge with the date appears everywhere.
@@ -150,7 +152,8 @@ The **✨ Auto-fill** button sends the receipt image to an AI model, which extra
 
 **Option B — Claude (paid, pay-as-you-go):**
 - Get an API key at **console.anthropic.com** (Settings → API keys). Costs roughly half a cent per receipt.
-- If both keys are saved, the app uses Gemini.
+- If both keys are saved, the app uses Gemini first and falls back to Claude if Gemini fails.
+- The app asks Gemini for its current Flash model (`gemini-flash-latest`) and falls back to older versions, so Google retiring a model version doesn't break auto-fill.
 
 **Note on subscriptions:** a Google AI Pro subscription or a Claude Pro subscription does **not** include API access — those cover the consumer chat apps only. API keys are separate products for both companies, which is why the free Gemini AI Studio key is the right fit here.
 
@@ -190,6 +193,8 @@ Other privacy notes:
 **Google shows "unverified app" on first sign-in** — expected for a personal OAuth app. Advanced → continue, or add yourself as a test user.
 
 **Auto-fill says it needs an API key** — add a free Gemini key from aistudio.google.com (or a paid Anthropic key) in the Settings tab.
+
+**Auto-fill failed** — the message shows the provider's actual error. `API key not valid` / `401`: re-paste the key in Settings. `429` / quota: you've hit the free-tier limit, try again later. `404`: every model the app knows about has been retired, so the app needs an update.
 
 **PDF conversion fails** — pdf.js loads from a CDN, so the first PDF needs an internet connection.
 

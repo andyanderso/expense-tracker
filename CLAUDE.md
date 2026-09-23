@@ -53,7 +53,7 @@ Deletes are **soft** — a `deleted` tombstone flag (images stripped to save spa
 
 **Settings** (`settings` object in the `meta` store) are per-device and deliberately **not synced** — that's why the `DEFAULT_*` constants exist.
 
-**AI auto-fill.** `extractWithGemini()` (model `gemini-2.5-flash`, free-tier key) / `extractWithClaude()` (`claude-sonnet-4-6`, browser-direct header); Gemini is preferred when both keys are set. Both share `EXTRACT_PROMPT` demanding raw JSON; parse defensively (strip fences, slice `{…}`).
+**AI auto-fill.** `extractWithGemini()` (walks `GEMINI_MODELS`, starting with the auto-updating `gemini-flash-latest` alias and falling through on 404 only, since Google retires pinned versions; free-tier key) / `extractWithClaude()` (`claude-sonnet-5`, browser-direct header); Gemini is preferred when both keys are set, with Claude as fallback if Gemini throws. `apiError()` surfaces the provider's error message in the toast. Don't go back to a generic "check your key" message, because it hid a retired-model failure. Both share `EXTRACT_PROMPT` demanding raw JSON; parse defensively (strip fences, slice `{…}`).
 
 **Images.** `loadBitmap()` uses `createImageBitmap({imageOrientation:'from-image'})` so EXIF rotation is always applied; `downscale(file, doCrop)`; `autoCrop()` is deliberately conservative (bails unless the content box is ≥25% per dimension) — keep it that way, over-cropping a receipt is worse than not cropping. Card-statement screenshots always use `doCrop=false`. PDFs render via pdf.js (up to 3 pages stitched into one JPEG).
 
