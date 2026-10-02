@@ -38,7 +38,7 @@ All app code is one strict-mode IIFE in `index.html`, organized in commented sec
 ```js
 { id, date, amount, currency,            // receipt face value; currencies incl. USD/CAD/EUR/CLP/ARS/NZD/INR
   billedAmount, billedImage,             // optional USD card charge + statement screenshot (reconciliation)
-  vendor, trip, employer, type, notes,   // type ∈ TYPES; trip/employer autocomplete via <datalist>
+  vendor, trip, employer, type, notes,   // type ∈ TYPES; vendor/trip/employer use the custom combo (see UI rules)
   image,                                 // dataURL JPEG, ≤1600px, EXIF-rotated, auto-cropped
   reimbursed, reimbursedDate,
   nonReimb,                              // true = paid by company card etc.; never pending/reimbursed
@@ -67,8 +67,10 @@ Deletes are **soft** — a `deleted` tombstone flag (images stripped to save spa
 ## UI rules
 
 - Five tabs in a **sticky top bar**: ＋ Add (canary CTA pill), Receipts, History, Report, ⚙ Settings. Underline = active.
-- **Nothing may exceed viewport width — this was a shipped bug.** Text lines inside receipt cards must be block-level elements with `overflow:hidden;text-overflow:ellipsis` (inline spans can't truncate and once pushed the page wider than the phone screen). `html,body` keep `overflow-x:hidden`; global `img{max-width:100%}`.
+- **Nothing may exceed viewport width — this was a shipped bug.** Text lines inside receipt cards must be block-level elements with `overflow:hidden;text-overflow:ellipsis` (inline spans can't truncate and once pushed the page wider than the phone screen). `html,body` keep `overflow-x:clip`; global `img{max-width:100%}`.
 - **Never use localStorage/sessionStorage** — IndexedDB only.
+- **No `<datalist>`.** Its native popup lands behind/over the Android keyboard unpredictably. Vendor/trip/employer use the custom type-ahead (`comboOpen()`/`comboPlace()`, shared `#comboList`): it sizes itself to `visualViewport` and scrolls the field up under the top bar (using `#comboSpacer` for room). The viewport meta has `interactive-widget=resizes-content` for the same reason.
+- `html`/`body` use `overflow-x:clip`, **not `hidden`**: `hidden` makes `body` a scroll container and silently breaks the sticky `#topbar`.
 - Design system ("carbon-copy receipt slip"): ink `#22303A`, paper `#EFF1EE`, canary `#F2C744`, pine `#3E6B4F`, rust `#B4552D`; Barlow Condensed (display/labels), IBM Plex Mono (numbers/dates), Inter (body); cards have a zigzag clip-path tear edge. Reuse the CSS variables; don't introduce new colors casually.
 
 The README's user-facing behavior descriptions (reconciliation display, report format, sync semantics, Google Cloud setup steps) are the spec — keep them accurate when changing behavior, in the same commit.

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <meta name="theme-color" content="#22303A">
 <title>Expense Tracker</title>
 <link rel="manifest" href="manifest.json">
@@ -30,8 +30,9 @@
   --disp:'Barlow Condensed','Inter',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%;overflow-x:hidden}
-body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45;padding-bottom:28px;overflow-x:hidden;max-width:100vw}
+/* overflow-x:clip, not hidden: hidden makes body a scroll container, which silently disables the sticky #topbar */
+html{-webkit-text-size-adjust:100%;overflow-x:hidden;overflow-x:clip}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45;padding-bottom:28px;overflow-x:hidden;overflow-x:clip;max-width:100vw}
 img{max-width:100%}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink)}
@@ -71,6 +72,15 @@ textarea{resize:vertical;min-height:60px}
 .photo-preview{position:relative;margin-bottom:14px}
 .photo-preview img{width:100%;border-radius:var(--radius);border:1.5px solid var(--line);display:block}
 .photo-preview button{position:absolute;top:8px;right:8px;background:var(--ink);color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:13px}
+/* type-ahead suggestions (replaces <datalist>, whose native popup lands behind the Android keyboard) */
+.field input{scroll-margin-top:110px}
+.combo-list{position:absolute;z-index:40;background:var(--card);border:1.5px solid var(--canary-deep);border-radius:var(--radius);box-shadow:0 6px 18px rgba(34,48,58,.22);overflow-y:auto;overscroll-behavior:contain;display:none}
+.combo-list.open{display:block}
+.combo-hint{font-family:var(--disp);font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-soft);padding:8px 14px 4px}
+.combo-opt{display:block;width:100%;text-align:left;background:none;border:none;border-top:1px solid var(--line);padding:12px 14px;min-height:46px;font-size:16px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.combo-opt.active,.combo-opt:hover{background:#FFF9E8}
+.combo-opt mark{background:#FCEFC7;color:inherit;font-weight:600;border-radius:2px}
+#comboSpacer{height:0}
 .drop-active{outline:2px dashed var(--canary-deep);outline-offset:4px;border-radius:var(--radius)}
 
 .chips{display:flex;flex-wrap:wrap;gap:8px}
@@ -215,12 +225,12 @@ textarea{resize:vertical;min-height:60px}
       <div class="field"><label for="fAmount">Amount</label><input type="number" id="fAmount" inputmode="decimal" step="0.01" min="0" placeholder="0.00"></div>
     </div>
     <div class="row2">
-      <div class="field"><label for="fVendor">Vendor</label><input type="text" id="fVendor" placeholder="Where you paid" list="dlVendor"><datalist id="dlVendor"></datalist></div>
+      <div class="field"><label for="fVendor">Vendor</label><input type="text" id="fVendor" placeholder="Where you paid" autocomplete="off" autocapitalize="words" spellcheck="false"></div>
       <div class="field"><label for="fCurrency">Currency</label>
         <select id="fCurrency"><option>USD</option><option>CAD</option><option>EUR</option><option>CLP</option><option>ARS</option><option>NZD</option><option>INR</option><option>Other</option></select>
       </div>
     </div>
-    <div class="field"><label for="fTrip">Trip</label><input type="text" id="fTrip" placeholder="e.g. Tantalus Heli Trip" list="dlTrip"><datalist id="dlTrip"></datalist></div>
+    <div class="field"><label for="fTrip">Trip</label><input type="text" id="fTrip" placeholder="e.g. Tantalus Heli Trip" autocomplete="off" autocapitalize="words" spellcheck="false"></div>
     <div class="panel" id="billedPanel" style="padding:12px 14px">
       <h3 style="font-size:15px;margin-bottom:8px">Card charges — reconcile USD (optional)</h3>
       <p class="hint" style="margin-top:0">Add one row per separate card charge for this receipt — e.g. lodging and parking on one invoice, billed separately. Click a charge's amount field, then paste (Ctrl+V) or drag its statement screenshot in.</p>
@@ -228,7 +238,7 @@ textarea{resize:vertical;min-height:60px}
       <button type="button" class="btn-ghost btn" id="billedAddBtn" style="margin-top:4px">+ Add card charge</button>
       <input type="file" id="billedInput" accept="image/*,application/pdf" hidden>
     </div>
-    <div class="field"><label for="fEmployer">Employer / client</label><input type="text" id="fEmployer" placeholder="Who reimburses this" list="dlEmployer"><datalist id="dlEmployer"></datalist></div>
+    <div class="field"><label for="fEmployer">Employer / client</label><input type="text" id="fEmployer" placeholder="Who reimburses this" autocomplete="off" autocapitalize="words" spellcheck="false"></div>
     <div class="field"><label id="typeLabel">Expense type</label>
       <div class="chips" id="typeChips" role="group" aria-labelledby="typeLabel"></div>
     </div>
@@ -248,6 +258,7 @@ textarea{resize:vertical;min-height:60px}
       </div>
     </div>
     <button class="btn btn-primary" id="saveBtn">Save receipt</button>
+    <div id="comboSpacer"></div>
   </section>
 
   <!-- ============ RECEIPTS TAB ============ -->
@@ -367,6 +378,7 @@ textarea{resize:vertical;min-height:60px}
   <button class="btn btn-ghost" id="pickCancelBtn">Cancel</button>
 </div>
 
+<div class="combo-list" id="comboList" role="listbox"></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -596,6 +608,7 @@ document.querySelectorAll('nav button').forEach(b=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
     b.classList.add('active');
     $(b.dataset.tab).classList.add('active');
+    comboClose(); combo.input=null;
     if(selectMode && b.dataset.tab!=='tab-list'){ selectMode=false; selectedIds.clear(); updateBulkBar(); }
     if(b.dataset.tab==='tab-list') renderList();
     if(b.dataset.tab==='tab-history') renderHistory();
@@ -770,6 +783,134 @@ setupDropZone($('billedPanel'), (f,e)=>{
   setBilledImageFromFile(idx, f);
 });
 
+/* ============ type-ahead suggestions (vendor / trip / employer) ============ */
+// Custom list instead of <datalist>: Android Chrome places the native popup
+// unpredictably relative to the keyboard. This list sits directly under the field,
+// and the page scrolls so field + list fit in the visible area above the keyboard.
+// Suggestions are most-recently-used first; typing filters by any word start,
+// then by substring anywhere.
+function recentDistinct(field){
+  // recency = when a receipt using it was last entered, tie-broken by receipt date
+  const seen = new Map();
+  live().forEach(r=>{
+    const v = (r[field]||'').trim(); if(!v) return;
+    const t = [r.createdAt||0, r.date||''], cur = seen.get(v);
+    if(!cur || t[0]>cur[0] || (t[0]===cur[0] && t[1]>cur[1])) seen.set(v, t);
+  });
+  return [...seen.keys()].sort((a,b)=>{ const x=seen.get(a), y=seen.get(b); return y[0]-x[0] || (y[1]>x[1]?1:y[1]<x[1]?-1:0); });
+}
+const combo = { input:null, field:null, items:[], active:-1, typed:false };   // typed=false: show everything, even if the field is prefilled
+const comboVV = window.visualViewport;
+function comboMatches(field, q){
+  const all = recentDistinct(field);
+  q = q.trim().toLowerCase();
+  if(!q) return all;
+  const starts = [], words = [], inner = [];
+  all.forEach(v=>{
+    const l = v.toLowerCase();
+    if(l===q) return;
+    if(l.startsWith(q)) starts.push(v);
+    else if(l.split(/[\s\-\/&,.()]+/).some(w=>w.startsWith(q))) words.push(v);
+    else if(l.includes(q)) inner.push(v);
+  });
+  return starts.concat(words, inner);
+}
+function comboMark(v, q){
+  q = q.trim();
+  const i = q ? v.toLowerCase().indexOf(q.toLowerCase()) : -1;
+  return i<0 ? esc(v) : esc(v.slice(0,i))+'<mark>'+esc(v.slice(i,i+q.length))+'</mark>'+esc(v.slice(i+q.length));
+}
+function comboRender(){
+  const el = $('comboList'), inp = combo.input;
+  if(!inp) return;
+  const q = combo.typed ? inp.value : '';
+  combo.items = comboMatches(combo.field, q).slice(0,30);
+  if(!combo.items.length){ comboClose(); return; }
+  combo.active = Math.min(combo.active, combo.items.length-1);
+  el.innerHTML = (q.trim() ? '' : '<div class="combo-hint">Recent</div>')
+    + combo.items.map((v,i)=>'<button type="button" class="combo-opt'+(i===combo.active?' active':'')+'" role="option" id="combo-opt-'+i+'" data-i="'+i+'" aria-selected="'+(i===combo.active)+'">'+comboMark(v, q)+'</button>').join('');
+  inp.setAttribute('aria-expanded','true');
+  if(combo.active>=0) inp.setAttribute('aria-activedescendant','combo-opt-'+combo.active);
+  else inp.removeAttribute('aria-activedescendant');
+  el.classList.add('open');
+  comboPlace(true);
+}
+// Position the list under the input and cap its height at the space left above
+// the keyboard; if that space is cramped, scroll the field up under the top bar.
+function comboPlace(allowScroll){
+  const el = $('comboList'), inp = combo.input;
+  if(!inp || !el.classList.contains('open')) return;
+  const visTop = comboVV ? comboVV.offsetTop : 0;
+  const visBottom = comboVV ? comboVV.offsetTop + comboVV.height : window.innerHeight;
+  const barBottom = Math.max(visTop, $('topbar').getBoundingClientRect().bottom);
+  const want = Math.min(el.scrollHeight, 260);
+  let r = inp.getBoundingClientRect();
+  if(allowScroll && visBottom - r.bottom - 12 < want){
+    // make sure there's page below the field to scroll into
+    $('comboSpacer').style.height = Math.round(visBottom - visTop) + 'px';
+    window.scrollBy(0, r.top - barBottom - 8);
+    r = inp.getBoundingClientRect();
+  }
+  const main = document.querySelector('main').getBoundingClientRect();
+  el.style.left = (main.left + 16 + window.scrollX) + 'px';
+  el.style.width = (main.width - 32) + 'px';
+  el.style.top = (r.bottom + 4 + window.scrollY) + 'px';
+  el.style.maxHeight = Math.max(96, visBottom - r.bottom - 12) + 'px';
+}
+function comboOpen(inp, field){
+  combo.input = inp; combo.field = field; combo.active = -1; combo.typed = false;
+  comboRender();
+}
+function comboClose(){
+  const el = $('comboList');
+  el.classList.remove('open'); el.innerHTML = '';
+  if(combo.input){ combo.input.setAttribute('aria-expanded','false'); combo.input.removeAttribute('aria-activedescendant'); }
+  $('comboSpacer').style.height = '0';
+}
+function comboPick(i, viaTouch){
+  const inp = combo.input, v = combo.items[i];
+  if(!inp || v==null) return;
+  inp.value = v;
+  comboClose();
+  combo.input = null;
+  if(viaTouch) inp.blur();   // drop the keyboard so the rest of the form is visible
+}
+[['fVendor','vendor'],['fTrip','trip'],['fEmployer','employer']].forEach(([id,field])=>{
+  const inp = $(id);
+  inp.setAttribute('role','combobox');
+  inp.setAttribute('aria-autocomplete','list');
+  inp.setAttribute('aria-controls','comboList');
+  inp.setAttribute('aria-expanded','false');
+  inp.addEventListener('focus',()=>comboOpen(inp, field));
+  inp.addEventListener('input',()=>{
+    if(combo.input!==inp) comboOpen(inp, field);
+    combo.typed = true; combo.active = -1; comboRender();
+  });
+  inp.addEventListener('blur',()=>setTimeout(()=>{ if(combo.input===inp && document.activeElement!==inp){ comboClose(); combo.input=null; } },150));
+  inp.addEventListener('keydown',e=>{
+    if(combo.input!==inp || !$('comboList').classList.contains('open')) return;
+    const n = combo.items.length;
+    if(e.key==='ArrowDown'){ e.preventDefault(); combo.active=(combo.active+1)%n; comboRender(); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); combo.active=(combo.active-1+n)%n; comboRender(); }
+    else if(e.key==='Enter' && combo.active>=0){ e.preventDefault(); comboPick(combo.active, false); }
+    else if(e.key==='Escape'){ comboClose(); }
+  });
+});
+// pointerdown + preventDefault keeps focus in the input, so blur doesn't close the list first
+let comboPointer = 'mouse';
+$('comboList').addEventListener('pointerdown',e=>{ comboPointer = e.pointerType; if(e.target.closest('.combo-opt')) e.preventDefault(); });
+$('comboList').addEventListener('click',e=>{
+  const b = e.target.closest('.combo-opt'); if(!b) return;
+  comboPick(+b.dataset.i, comboPointer!=='mouse');
+});
+if(comboVV){
+  // the keyboard opens after focus; re-fit (and scroll once more if needed) when it lands
+  comboVV.addEventListener('resize',()=>comboPlace(true));
+  comboVV.addEventListener('scroll',()=>comboPlace(false));
+}
+window.addEventListener('resize',()=>comboPlace(true));
+window.addEventListener('scroll',()=>comboPlace(false),{passive:true});
+
 /* ============ AI auto-fill ============ */
 const EXTRACT_PROMPT = 'This image is a receipt or invoice. Extract its details and respond with ONLY a raw JSON object, no markdown fences, no commentary: {"vendor": string, "date": "YYYY-MM-DD", "amount": number (the grand total paid), "currency": 3-letter code like "USD", "type": one of '+JSON.stringify(TYPES)+', "notes": very short string or ""}. Use null for anything unreadable.';
 
@@ -928,28 +1069,20 @@ $('saveBtn').addEventListener('click',async ()=>{
     receipts.push(r);
   }
   await putReceipt(r);
-  resetForm(); refreshDatalists(); refreshFilters(); updateHeader();
+  resetForm(); refreshFilters(); updateHeader();
   toast('Receipt saved');
   scheduleAutoSync();
 });
 
-/* ============ datalists & filters ============ */
+/* ============ filters ============ */
 function distinct(field){
   return [...new Set(live().map(r=>r[field]).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-}
-function fillList(el, values){
-  el.innerHTML=''; values.forEach(v=>{ const o=document.createElement('option'); o.value=v; el.appendChild(o); });
 }
 function fillSelect(sel, values, allLabel){
   const cur = sel.value;
   sel.innerHTML = '<option value="">'+allLabel+'</option>';
   values.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
   if(values.includes(cur)) sel.value=cur;
-}
-function refreshDatalists(){
-  fillList($('dlVendor'),distinct('vendor'));
-  fillList($('dlTrip'),distinct('trip'));
-  fillList($('dlEmployer'),distinct('employer'));
 }
 function refreshFilters(){
   fillSelect($('filtTrip'),distinct('trip'),'All trips');
@@ -1025,7 +1158,7 @@ $('renameTripBtn').addEventListener('click',async ()=>{
   const reportHadTrip = $('rTrip').value===oldName;
   const now = Date.now();
   for(const r of affected){ r.trip = newName; r.updatedAt = now; await putReceipt(r); }
-  refreshDatalists(); refreshFilters();
+  refreshFilters();
   $('filtTrip').value = newName;
   if(reportHadTrip) $('rTrip').value = newName;
   renderList(); renderReportSummary(); renderHistory();
@@ -1538,7 +1671,7 @@ $('restoreInput').addEventListener('change',e=>{
       const data = JSON.parse(rd.result);
       if(!data.receipts || !Array.isArray(data.receipts)) throw new Error('bad file');
       const n = await mergeIn(data.receipts);
-      refreshDatalists(); refreshFilters(); updateHeader(); renderList(); renderReportSummary();
+      refreshFilters(); updateHeader(); renderList(); renderReportSummary();
       toast('Merged '+n+' change'+(n===1?'':'s')+' from backup');
       if(n) scheduleAutoSync();
     }catch(err){ toast("That file isn't a Expense Tracker backup"); }
@@ -1662,7 +1795,7 @@ async function doSync(silent){
     });
     if(up.status===401){ gToken=null; gTokenExp=0; metaSet('gtoken',null); throw new Error('sign-in expired — try syncing again'); }
     if(!up.ok) throw new Error('Drive upload failed');
-    refreshDatalists(); refreshFilters(); updateHeader(); renderList(); renderReportSummary(); renderHistory();
+    refreshFilters(); updateHeader(); renderList(); renderReportSummary(); renderHistory();
     toast(pulled ? 'Synced — pulled '+pulled+' change'+(pulled===1?'':'s') : 'Synced with Drive');
     lastSyncOk = true; lastSyncAt = Date.now(); lastSyncSuccessAt = lastSyncAt;
   }catch(err){
@@ -1755,7 +1888,7 @@ function updateSyncBanner(){
     if(m) $('appVersion').textContent = 'Version: '+m[1];
   }).catch(()=>{});
   resetForm();
-  refreshDatalists(); refreshFilters(); updateHeader(); renderReportSummary();
+  refreshFilters(); updateHeader(); renderReportSummary();
 })();
 
 })();
