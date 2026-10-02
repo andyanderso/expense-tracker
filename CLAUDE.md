@@ -41,6 +41,7 @@ All app code is one strict-mode IIFE in `index.html`, organized in commented sec
   vendor, trip, employer, type, notes,   // type ∈ TYPES; trip/employer autocomplete via <datalist>
   image,                                 // dataURL JPEG, ≤1600px, EXIF-rotated, auto-cropped
   reimbursed, reimbursedDate,
+  nonReimb,                              // true = paid by company card etc.; never pending/reimbursed
   deleted,                               // tombstone
   createdAt, updatedAt }                 // updatedAt drives sync merge
 ```
@@ -58,6 +59,8 @@ Deletes are **soft** — a `deleted` tombstone flag (images stripped to save spa
 **Images.** `loadBitmap()` uses `createImageBitmap({imageOrientation:'from-image'})` so EXIF rotation is always applied; `downscale(file, doCrop)`; `autoCrop()` is deliberately conservative (bails unless the content box is ≥25% per dimension) — keep it that way, over-cropping a receipt is worse than not cropping. Card-statement screenshots always use `doCrop=false`. PDFs render via pdf.js (up to 3 pages stitched into one JPEG).
 
 **Reports.** `reportHTML()` builds Word-flavored HTML (summary by type, itemized table — `<colgroup>`-driven column widths, "Card charge (USD)" column omitted when no receipt in the set has a `billedAmount` — then each receipt image page-broken with its statement screenshot beneath, images capped to `max-width:300px;max-height:480pt` with `page-break-inside:avoid` so one receipt doesn't spill across pages). All three export paths share it: `docBtn`/`printBtn` (local download / print) wrap it as legacy Word-flavored HTML (`application/msword` blob); "Save to Drive" (`pickSaveBtn`) uploads it as genuine `text/html` with metadata `mimeType: 'application/vnd.google-apps.document'` so Drive converts it to a native Google Doc. **Known unresolved bug:** Drive's conversion silently drops the inline `data:` URI receipt images regardless of upload encoding tried so far (`application/msword`-labeled HTML, genuine `text/html`, and a genuine client-side-generated `.docx` via the `docx` library all failed — the `.docx` attempt fixed images but broke table column widths in Google's docx importer in a way that survived several encoding fixes, DXA widths included, so it was reverted). Local download/print always show images fine; only the Drive-Doc conversion loses them. Before trying another fix, re-read the conversation history in git log for this file — several approaches have already been tried and ruled out.
+
+**Non-reimbursable receipts** (`nonReimb`) are mutually exclusive with `reimbursed`. Use `isPending()` (not `!r.reimbursed`) for "awaiting reimbursement" — header, history, report outstanding, and the bulk "mark reimbursed" all depend on it. In reports, `reportParts()` returns `{reimb, nr}`: the status filter applies to `reimb` only; `nr` is included via the `rIncNR` checkbox and rendered as its own "Non-reimbursable expenses" section, kept out of the summary totals.
 
 **External libraries** (pdf.js 3.11.174, Google Identity Services) load lazily from CDNs via `loadScript()` — nothing is vendored. The service worker only caches same-origin GETs and must never intercept cross-origin API calls.
 

@@ -84,16 +84,18 @@ Filter by trip, employer, expense type, reimbursement status, or date range. Gro
 - **One receipt:** tap it → pick the date the money landed → **Mark reimbursed**. (The Edit form also has Reimbursed + date fields.) Green badge with the date appears everywhere.
 - **Several at once:** on the Receipts tab, tap **Select**, tap the receipts (or **Select all** for everything currently filtered), set the date, and hit **✓ Reimbursed** — or **Pending** to un-mark. Tip: filter to a trip or employer first, then Select all.
 - The header always shows your total outstanding — what you're still owed.
+- **Non-reimbursable expenses** (e.g. paid on a company card): tick **Not reimbursable** on the Add/Edit form. These get a grey "Non-reimb." badge, never count as pending or toward what you're owed, are skipped by bulk Reimbursed/Pending, and can be found with the **Non-reimbursable** status filter. To flip one back, open it and tap **Needs reimbursement**.
 
 ### History tab
 A ledger of your reimbursements over time:
 - Lifetime totals (reimbursed vs. still awaiting)
 - Everything still pending, at the top
+- Non-reimbursable expenses in their own group (and lifetime total) at the bottom
 - Reimbursed receipts grouped by the **month the money came in**, with monthly totals — handy for spotting an employer that's slow to pay.
 
 ### Reports → Google Doc — Report tab
 1. Set a title, your name, and filters (trip, employer, dates). It defaults to **not-yet-reimbursed only**, which is usually what you want to submit.
-2. Check the on-screen summary, then tap **Download Word doc (.doc)**. The file contains a summary by expense type, an itemized table (with reimbursement status), and every receipt image with a caption.
+2. Check the on-screen summary, then tap **Download Word doc (.doc)**. The file contains a summary by expense type, an itemized table (with reimbursement status), and every receipt image with a caption. Non-reimbursable expenses matching the trip/employer/date filters are included in a separate **Non-reimbursable expenses** section (own table and total, excluded from the reimbursable summary and totals) and their receipt images are captioned "(non-reimbursable)"; untick **Include non-reimbursable expenses** to leave them out. The status filter applies only to reimbursable receipts.
 3. Get it into Drive either way:
    - **📁 Save to Drive as Google Doc…** — the app opens a folder browser (starting at your configured sync folder), you drill to any folder and tap "Save in this folder". The report is uploaded and converted to a **native Google Doc** on the spot — no download/upload round-trip. Requires the Drive sync setup (client ID) below.
    - **Download Word doc (.doc)** — downloads locally; upload it to Drive yourself and open it, and Drive converts it to a Google Doc.

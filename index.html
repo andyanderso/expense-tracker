@@ -112,6 +112,7 @@ textarea{resize:vertical;min-height:60px}
 .rstat{display:inline-block;font-family:var(--disp);font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
 .rstat.done{background:#E2EFE6;color:var(--pine)}
 .rstat.pend{background:#F6E3D8;color:var(--rust)}
+.rstat.nr{background:var(--paper);color:var(--ink-soft);border:1px solid var(--line)}
 .reimb-box{background:var(--card);border:1.5px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .reimb-box .rstat{margin-left:0;font-size:13px;padding:3px 8px}
 .reimb-box input[type=date]{flex:1;min-width:130px;padding:7px 10px;border:1.5px solid var(--line);border-radius:8px;background:var(--paper)}
@@ -234,6 +235,10 @@ textarea{resize:vertical;min-height:60px}
     <div class="field"><label for="fNotes">Notes</label><textarea id="fNotes" placeholder="Optional"></textarea></div>
     <div class="panel" style="padding:12px 14px">
       <div class="field" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <input type="checkbox" id="fNonReimb" style="width:20px;height:20px;flex:none">
+        <label for="fNonReimb" style="margin:0">Not reimbursable <span style="text-transform:none;letter-spacing:0">(e.g. company card)</span></label>
+      </div>
+      <div class="field" id="fReimbWrap" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <input type="checkbox" id="fReimb" style="width:20px;height:20px;flex:none">
         <label for="fReimb" style="margin:0">Reimbursed</label>
       </div>
@@ -255,6 +260,7 @@ textarea{resize:vertical;min-height:60px}
         <option value="">All statuses</option>
         <option value="no">Not reimbursed</option>
         <option value="yes">Reimbursed</option>
+        <option value="nr">Non-reimbursable</option>
       </select>
       <input type="date" id="filtFrom" aria-label="From date">
       <input type="date" id="filtTo" aria-label="To date">
@@ -291,6 +297,10 @@ textarea{resize:vertical;min-height:60px}
           <option value="">All receipts</option>
           <option value="yes">Already reimbursed only</option>
         </select>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:10px;margin:12px 0 0">
+        <input type="checkbox" id="rIncNR" checked style="width:20px;height:20px;flex:none">
+        <label for="rIncNR" style="margin:0">Include non-reimbursable expenses <span style="text-transform:none;letter-spacing:0">(listed separately)</span></label>
       </div>
     </div>
     <div class="panel">
@@ -857,6 +867,13 @@ $('aiBtn').addEventListener('click', async ()=>{
   btn.disabled = false; btn.textContent = '✨ Auto-fill from receipt';
 });
 
+// Non-reimbursable (e.g. paid on a company card) and reimbursed are mutually exclusive.
+function syncReimbFields(){
+  const nr = $('fNonReimb').checked;
+  $('fReimbWrap').style.display = nr ? 'none' : 'flex';
+  $('fReimbDateWrap').style.display = !nr && $('fReimb').checked ? 'block' : 'none';
+}
+$('fNonReimb').addEventListener('change', syncReimbFields);
 $('fReimb').addEventListener('change',()=>{
   $('fReimbDateWrap').style.display = $('fReimb').checked ? 'block' : 'none';
   if($('fReimb').checked && !$('fReimbDate').value) $('fReimbDate').value = todayISO();
@@ -869,9 +886,10 @@ function resetForm(){
   ['fAmount','fVendor','fTrip','fEmployer','fNotes','fAiHint'].forEach(id=>$(id).value='');
   currentBilled=[];
   renderBilledRows();
+  $('fNonReimb').checked=false;
   $('fReimb').checked=false;
   $('fReimbDate').value='';
-  $('fReimbDateWrap').style.display='none';
+  syncReimbFields();
   $('fCurrency').value='USD';
   buildChips(null);
   $('saveBtn').textContent='Save receipt';
@@ -893,8 +911,9 @@ $('saveBtn').addEventListener('click',async ()=>{
     type: selectedType(),
     notes: $('fNotes').value.trim(),
     image: currentPhoto,
-    reimbursed: $('fReimb').checked,
-    reimbursedDate: $('fReimb').checked ? ($('fReimbDate').value || todayISO()) : null,
+    nonReimb: $('fNonReimb').checked,
+    reimbursed: !$('fNonReimb').checked && $('fReimb').checked,
+    reimbursedDate: !$('fNonReimb').checked && $('fReimb').checked ? ($('fReimbDate').value || todayISO()) : null,
     deleted: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
@@ -947,7 +966,7 @@ function applyFilters(list, trip, employer, type, from, to, status){
     (!type || r.type===type) &&
     (!from || r.date>=from) &&
     (!to || r.date<=to) &&
-    (!status || (status==='yes' ? !!r.reimbursed : !r.reimbursed))
+    (!status || (status==='yes' ? !!r.reimbursed : status==='nr' ? !!r.nonReimb : !r.reimbursed && !r.nonReimb))
   ).sort((a,b)=> a.date===b.date ? a.createdAt-b.createdAt : (a.date<b.date?-1:1));
 }
 
@@ -978,11 +997,12 @@ function totalsString(list){
   const parts = Object.keys(t).sort().map(c=>fmt(t[c],c));
   return parts.length?parts.join(' + '):'$0.00';
 }
+const isPending = r => !r.reimbursed && !r.nonReimb;
 function updateHeader(){
   const all = live();
-  const pending = all.filter(r=>!r.reimbursed);
+  const pending = all.filter(isPending);
   $('headerTotal').textContent = totalsString(pending);
-  $('headerCount').textContent = pending.length + ' of ' + all.length + ' awaiting reimb.';
+  $('headerCount').textContent = pending.length + ' of ' + all.filter(r=>!r.nonReimb).length + ' awaiting reimb.';
 }
 
 /* ============ list rendering ============ */
@@ -1029,7 +1049,8 @@ function slipHTML(r){
     + (r.trip?'<span class="subline">'+esc(r.trip)+'</span>':'')
     + (r.employer?'<span class="subline">'+esc(r.employer)+'</span>':'')
     + '<span class="tagrow"><span class="tag">'+esc(r.type)+'</span>'
-    + (r.reimbursed
+    + (r.nonReimb ? '<span class="rstat nr">Non-reimb.</span>'
+      : r.reimbursed
         ? '<span class="rstat done">✓ '+esc(r.reimbursedDate||'reimbursed')+'</span>'
         : '<span class="rstat pend">Pending</span>')
     + '</span>'
@@ -1066,16 +1087,17 @@ $('bulkAllBtn').addEventListener('click',()=>{
 async function bulkApply(reimbursed){
   if(!selectedIds.size){ toast('Nothing selected'); return; }
   const d = $('bulkDate').value || todayISO();
-  let n = 0;
+  let n = 0, skipped = 0;
   for(const id of selectedIds){
     const r = receipts.find(x=>x.id===id && !x.deleted);
     if(!r) continue;
+    if(r.nonReimb){ skipped++; continue; }
     r.reimbursed = reimbursed;
     r.reimbursedDate = reimbursed ? d : null;
     r.updatedAt = Date.now();
     await putReceipt(r); n++;
   }
-  toast(n + (reimbursed ? ' marked reimbursed '+d : ' marked pending'));
+  toast(n + (reimbursed ? ' marked reimbursed '+d : ' marked pending') + (skipped ? ' · '+skipped+' non-reimbursable skipped' : ''));
   exitSelectMode();
   updateHeader(); renderReportSummary(); renderHistory();
   if(n) scheduleAutoSync();
@@ -1129,7 +1151,8 @@ function renderHistory(){
   const host = $('historyView');
   const all = live();
   const done = all.filter(r=>r.reimbursed);
-  const pend = all.filter(r=>!r.reimbursed);
+  const pend = all.filter(isPending);
+  const nr = all.filter(r=>r.nonReimb);
   if(!all.length){
     host.innerHTML = '<div class="empty"><b>No history yet</b>Once you save receipts and mark them reimbursed, this tab shows what came in and when.</div>';
     return;
@@ -1137,6 +1160,7 @@ function renderHistory(){
   let html = '<div class="panel"><h3>Lifetime</h3><table class="sum-table">'
     + '<tr><td>Reimbursed ('+done.length+')</td><td>'+totalsString(done)+'</td></tr>'
     + '<tr class="total"><td style="color:var(--rust)">Awaiting ('+pend.length+')</td><td style="color:var(--rust)">'+totalsString(pend)+'</td></tr>'
+    + (nr.length ? '<tr><td style="color:var(--ink-soft)">Non-reimbursable ('+nr.length+')</td><td style="color:var(--ink-soft)">'+totalsString(nr)+'</td></tr>' : '')
     + '</table></div>';
   if(pend.length){
     html += '<div class="group-head"><span>Awaiting reimbursement</span><span class="sum">'+totalsString(pend)+'</span></div>';
@@ -1154,6 +1178,10 @@ function renderHistory(){
     html += '<div class="group-head"><span>Reimbursed · '+esc(label)+'</span><span class="sum">'+totalsString(g)+'</span></div>';
     html += g.map(slipHTML).join('');
   });
+  if(nr.length){
+    html += '<div class="group-head"><span>Non-reimbursable</span><span class="sum">'+totalsString(nr)+'</span></div>';
+    html += nr.slice().sort((a,b)=>a.date<b.date?1:-1).map(slipHTML).join('');
+  }
   host.innerHTML = html;
   host.querySelectorAll('.slip').forEach(el=>el.addEventListener('click',()=>openSheet(el.dataset.id)));
 }
@@ -1182,7 +1210,11 @@ function openSheet(id){
         '<p style="font-family:var(--disp);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px">Card statement'+(bi.length>1?' — '+fmt(b.amount||0,'USD'):'')+'</p><img src="'+b.image+'" alt="Card statement screenshot">'
       ).join('');
   const st = $('reimbStatus'), dt = $('reimbDate'), btn = $('reimbBtn');
-  if(r.reimbursed){
+  if(r.nonReimb){
+    st.className='rstat nr'; st.textContent='Non-reimbursable';
+    dt.style.display='none';
+    btn.textContent='Needs reimbursement'; btn.className='undo';
+  } else if(r.reimbursed){
     st.className='rstat done'; st.textContent='✓ Reimbursed '+(r.reimbursedDate||'');
     dt.style.display='none';
     btn.textContent='Undo'; btn.className='undo';
@@ -1197,7 +1229,8 @@ function openSheet(id){
 
 $('reimbBtn').addEventListener('click',async ()=>{
   const r = receipts.find(x=>x.id===openReceiptId); if(!r) return;
-  if(r.reimbursed){ r.reimbursed=false; r.reimbursedDate=null; }
+  if(r.nonReimb){ r.nonReimb=false; }
+  else if(r.reimbursed){ r.reimbursed=false; r.reimbursedDate=null; }
   else { r.reimbursed=true; r.reimbursedDate=$('reimbDate').value||todayISO(); }
   r.updatedAt = Date.now();
   await putReceipt(r);
@@ -1232,9 +1265,10 @@ $('editBtn').addEventListener('click',()=>{
   else { hidePhotoUI(); }
   $('fDate').value=r.date; $('fAmount').value=r.amount; $('fCurrency').value=r.currency;
   $('fVendor').value=r.vendor; $('fTrip').value=r.trip; $('fEmployer').value=r.employer; $('fNotes').value=r.notes;
+  $('fNonReimb').checked = !!r.nonReimb;
   $('fReimb').checked = !!r.reimbursed;
   $('fReimbDate').value = r.reimbursedDate || '';
-  $('fReimbDateWrap').style.display = r.reimbursed ? 'block' : 'none';
+  syncReimbFields();
   currentBilled = billedItems(r).map(b=>({amount:b.amount, image:b.image}));
   renderBilledRows();
   buildChips(r.type);
@@ -1247,13 +1281,24 @@ $('editBtn').addEventListener('click',()=>{
 });
 
 /* ============ report ============ */
-['rTrip','rEmployer','rFrom','rTo','rStatus'].forEach(id=>$(id).addEventListener('change',renderReportSummary));
+['rTrip','rEmployer','rFrom','rTo','rStatus','rIncNR'].forEach(id=>$(id).addEventListener('change',renderReportSummary));
 
+// Reimbursable receipts follow the status filter; non-reimbursable ones (company
+// card etc.) are never "reimbursed", so they're included by the checkbox instead
+// and reported in their own section.
+function reportParts(){
+  const args = [$('rTrip').value, $('rEmployer').value, '', $('rFrom').value, $('rTo').value];
+  const all = live();
+  const reimb = applyFilters(all.filter(r=>!r.nonReimb), ...args, $('rStatus').value);
+  const nr = $('rIncNR').checked ? applyFilters(all.filter(r=>r.nonReimb), ...args, '') : [];
+  return {reimb, nr};
+}
 function reportSet(){
-  return applyFilters(live(), $('rTrip').value, $('rEmployer').value, '', $('rFrom').value, $('rTo').value, $('rStatus').value);
+  const p = reportParts();
+  return p.reimb.concat(p.nr);
 }
 function renderReportSummary(){
-  const list = reportSet();
+  const {reimb:list, nr} = reportParts();
   const byType = {};
   list.forEach(r=>{ (byType[r.type]=byType[r.type]||[]).push(r); });
   let html='';
@@ -1261,15 +1306,19 @@ function renderReportSummary(){
     html += '<tr><td>'+esc(t)+' ('+byType[t].length+')</td><td>'+totalsString(byType[t])+'</td></tr>';
   });
   html += '<tr class="total"><td>Total — '+list.length+' receipt'+(list.length===1?'':'s')+'</td><td>'+totalsString(list)+'</td></tr>';
-  const pend = list.filter(r=>!r.reimbursed);
+  const pend = list.filter(isPending);
   if(pend.length && pend.length<list.length){
     html += '<tr><td style="color:var(--rust)">Still outstanding ('+pend.length+')</td><td style="color:var(--rust)">'+totalsString(pend)+'</td></tr>';
+  }
+  if(nr.length){
+    html += '<tr><td style="color:var(--ink-soft)">Non-reimbursable ('+nr.length+')</td><td style="color:var(--ink-soft)">'+totalsString(nr)+'</td></tr>';
   }
   $('rSummary').innerHTML = html;
 }
 
 function reportHTML(forWord){
-  const list = reportSet();
+  const {reimb:list, nr} = reportParts();
+  const all = list.concat(nr);
   const title = $('rTitle').value.trim() || 'Expense Report';
   const name = $('rName').value.trim();
   const trip = $('rTrip').value, employer = $('rEmployer').value;
@@ -1283,7 +1332,8 @@ function reportHTML(forWord){
   if(employer) h += 'Employer / client: '+esc(employer)+'<br>';
   if(trip) h += 'Trip: '+esc(trip)+'<br>';
   if(from||to) h += 'Period: '+esc(from||'…')+' to '+esc(to||'…')+'<br>';
-  h += 'Generated: '+todayISO()+' · '+list.length+' receipt'+(list.length===1?'':'s')+'</p>';
+  h += 'Generated: '+todayISO()+' · '+list.length+' receipt'+(list.length===1?'':'s')
+    + (nr.length ? ' + '+nr.length+' non-reimbursable' : '')+'</p>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Summary by expense type</h2>';
   h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10.5pt;width:100%"><tr style="background:#F2C744"><th align="left">Type</th><th align="left">Count</th><th align="left">Total</th></tr>';
@@ -1292,27 +1342,36 @@ function reportHTML(forWord){
   });
   h += '<tr style="font-weight:bold;background:#eee"><td>Total</td><td>'+list.length+'</td><td>'+totalsString(list)+'</td></tr></table>';
 
-  h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Itemized expenses</h2>';
-  const hasBilled = list.some(r=>billedItems(r).length);
+  const hasBilled = all.some(r=>billedItems(r).length);
   const cols = hasBilled
     ? [['#','4%'],['Date','9%'],['Vendor','19%'],['Type','10%'],['Trip','10%'],['Receipt amount','11%'],['Card charge (USD)','12%'],['Reimbursed','9%'],['Notes','16%']]
     : [['#','4%'],['Date','10%'],['Vendor','22%'],['Type','11%'],['Trip','11%'],['Receipt amount','13%'],['Reimbursed','10%'],['Notes','19%']];
-  h += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%;table-layout:fixed">';
-  h += '<colgroup>'+cols.map(c=>'<col width="'+c[1]+'">').join('')+'</colgroup>';
-  h += '<tr style="background:#F2C744">'+cols.map(c=>'<th align="left" style="width:'+c[1]+'">'+c[0]+'</th>').join('')+'</tr>';
-  list.forEach((r,i)=>{
-    const bi = billedItems(r);
-    h += '<tr><td>'+(i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td>'
-      + (hasBilled ? '<td>'+(bi.length?fmt(billedTotal(r),'USD')+(bi.length>1?' ('+bi.length+')':''):'—')+'</td>' : '')
-      + '<td>'+(r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
-  });
-  h += '</table>';
+  // rows are numbered continuously across both sections so "Receipt N" captions below stay unique
+  const itemTable = (rows, start) => {
+    let t = '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:10pt;width:100%;table-layout:fixed">';
+    t += '<colgroup>'+cols.map(c=>'<col width="'+c[1]+'">').join('')+'</colgroup>';
+    t += '<tr style="background:#F2C744">'+cols.map(c=>'<th align="left" style="width:'+c[1]+'">'+c[0]+'</th>').join('')+'</tr>';
+    rows.forEach((r,i)=>{
+      const bi = billedItems(r);
+      t += '<tr><td>'+(start+i+1)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.vendor)+'</td><td>'+esc(r.type)+'</td><td>'+esc(r.trip)+'</td><td>'+fmt(r.amount,r.currency)+'</td>'
+        + (hasBilled ? '<td>'+(bi.length?fmt(billedTotal(r),'USD')+(bi.length>1?' ('+bi.length+')':''):'—')+'</td>' : '')
+        + '<td>'+(r.nonReimb?'N/A':r.reimbursed?esc(r.reimbursedDate||'Yes'):'No')+'</td><td>'+esc(r.notes)+'</td></tr>';
+    });
+    return t + '</table>';
+  };
+  h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Itemized expenses</h2>';
+  h += list.length ? itemTable(list, 0) : '<p style="font-family:Arial,sans-serif;font-size:10.5pt;color:#666">No reimbursable expenses in this report.</p>';
+  if(nr.length){
+    h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt">Non-reimbursable expenses</h2>';
+    h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#444;margin-top:0">Included for the record only (e.g. paid directly on a company card). Not included in the totals above and not requested for reimbursement. Total: <b>'+totalsString(nr)+'</b></p>';
+    h += itemTable(nr, list.length);
+  }
   if(hasBilled) h += '<p style="font-family:Arial,sans-serif;font-size:9pt;color:#666">Where a card charge (USD) is shown, it is the actual amount billed to the card for that transaction (summed across all card charges tied to that receipt) and is used in the totals above; card statement images are attached alongside the corresponding receipts below.</p>';
 
   h += '<h2 style="font-family:Arial,sans-serif;font-size:14pt;page-break-before:always">Receipt images</h2>';
-  list.forEach((r,i)=>{
+  all.forEach((r,i)=>{
     const bi = billedItems(r);
-    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt;page-break-after:avoid'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(bi.length?' ('+fmt(billedTotal(r),'USD')+' charged to card)':'')+'</p>';
+    h += '<p style="font-family:Arial,sans-serif;font-size:10.5pt;margin-bottom:4pt;page-break-after:avoid'+(i>0?';page-break-before:always':'')+'"><b>Receipt '+(i+1)+(r.nonReimb?' (non-reimbursable)':'')+':</b> '+esc(r.date)+' · '+esc(r.vendor||'')+' · '+esc(r.type)+' · '+fmt(r.amount,r.currency)+(bi.length?' ('+fmt(billedTotal(r),'USD')+' charged to card)':'')+'</p>';
     if(r.image) h += '<img src="'+r.image+'" width="'+(forWord?300:'')+'" style="max-width:300px;max-height:480pt;width:auto;height:auto;border:1px solid #999;page-break-inside:avoid">';
     else h += '<p style="font-family:Arial,sans-serif;font-size:10pt;color:#888">(no photo attached)</p>';
     bi.filter(b=>b.image).forEach(b=>{
@@ -1436,7 +1495,7 @@ $('pickSaveBtn').addEventListener('click', async ()=>{
 });
 
 $('bulkReimbBtn').addEventListener('click',async ()=>{
-  const pend = reportSet().filter(r=>!r.reimbursed);
+  const pend = reportParts().reimb.filter(isPending);
   if(!pend.length){ toast('Nothing pending in this set'); return; }
   if(!confirm('Mark '+pend.length+' receipt'+(pend.length===1?'':'s')+' ('+totalsString(pend)+') as reimbursed today?')) return;
   const d = todayISO();
@@ -1660,6 +1719,7 @@ function updateSyncBanner(){
     receipts = await loadAll();
     receipts.forEach(r=>{
       r.reimbursed = !!r.reimbursed;
+      r.nonReimb = !!r.nonReimb;
       r.reimbursedDate = r.reimbursedDate || null;
       r.deleted = !!r.deleted;
       r.updatedAt = r.updatedAt || r.createdAt || Date.now();
